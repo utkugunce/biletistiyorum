@@ -1869,7 +1869,7 @@ async function handleAdminLogin() {
       body: JSON.stringify({ password: pwd }),
     });
     const data = await res.json();
-    if (res.ok && data.success) {
+    if (res.ok && (data.success || data.authenticated)) {
       isAdminAuthenticated = true;
       hideLoginOverlay();
       showToast("Yönetici girişi başarılı!");

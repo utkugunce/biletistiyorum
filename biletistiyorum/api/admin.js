@@ -331,9 +331,9 @@ export default async function handler(req, res) {
         "Set-Cookie",
         `zeren_admin_token=${validToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`
       );
-      return res.status(200).json({ authenticated: true, token: validToken, message: "Giriş başarılı." });
+      return res.status(200).json({ success: true, authenticated: true, token: validToken, message: "Giriş başarılı." });
     }
-    return res.status(401).json({ detail: "Hatalı şifre! Lütfen tekrar deneyiniz." });
+    return res.status(401).json({ success: false, detail: "Hatalı şifre! Lütfen tekrar deneyiniz." });
   }
 
   const cookies = parseCookies(req);
@@ -347,12 +347,12 @@ export default async function handler(req, res) {
   const isAuthenticated = reqToken === validToken;
 
   if (pathname === "/api/auth/check") {
-    return res.status(200).json({ authenticated: isAuthenticated });
+    return res.status(200).json({ success: isAuthenticated, authenticated: isAuthenticated });
   }
 
   if (pathname === "/api/auth/logout" && req.method === "POST") {
     res.setHeader("Set-Cookie", "zeren_admin_token=; Path=/; HttpOnly; Max-Age=0");
-    return res.status(200).json({ authenticated: false, message: "Çıkış yapıldı." });
+    return res.status(200).json({ success: true, authenticated: false, message: "Çıkış yapıldı." });
   }
 
   // Require authentication for all remaining /api/* admin routes
@@ -362,11 +362,11 @@ export default async function handler(req, res) {
 
   if (pathname === "/api/auth/change-password" && req.method === "POST") {
     if (String(body.current_password || "").trim() !== activePwd) {
-      return res.status(400).json({ detail: "Mevcut şifreniz hatalı." });
+      return res.status(400).json({ success: false, detail: "Mevcut şifreniz hatalı." });
     }
     const newPwd = String(body.new_password || "").trim();
     if (newPwd.length < 4) {
-      return res.status(400).json({ detail: "Yeni şifre en az 4 karakter olmalıdır." });
+      return res.status(400).json({ success: false, detail: "Yeni şifre en az 4 karakter olmalıdır." });
     }
     sysState.admin_password = newPwd;
     await saveSystemState(sysState);
@@ -375,7 +375,7 @@ export default async function handler(req, res) {
       "Set-Cookie",
       `zeren_admin_token=${newToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`
     );
-    return res.status(200).json({ ok: true, token: newToken, message: "Şifre güncellendi." });
+    return res.status(200).json({ success: true, ok: true, token: newToken, message: "Şifre güncellendi." });
   }
 
   const baseData = getBaseData();
@@ -623,9 +623,11 @@ export default async function handler(req, res) {
     await saveSystemState(sysState);
     const updatedState = buildFullState(baseData.base_state, sysState);
     return res.status(200).json({
+      success: true,
       ok: true,
       assigned_requests: assignedReqsCount,
       assigned_seats: assignedSeatsCount,
+      message: `${assignedReqsCount} personelin talebi (${assignedSeatsCount} koltuk) otomatik atandı.`,
       state: updatedState
     });
   }
@@ -690,12 +692,12 @@ export default async function handler(req, res) {
   // 10. POST /api/dispatch/mark-sent
   if (pathname === "/api/dispatch/mark-sent" && req.method === "POST") {
     sysState.sent_map = sysState.sent_map || {};
-    const key = body.recipient_id || body.person;
+    const key = body.request_id || body.recipient_id || body.person;
     if (key) {
       sysState.sent_map[key] = Boolean(body.sent);
       await saveSystemState(sysState);
     }
-    return res.status(200).json({ ok: true });
+    return res.status(200).json({ success: true, ok: true });
   }
 
   // 11. POST /api/dispatch/save-phone
@@ -705,7 +707,7 @@ export default async function handler(req, res) {
       sysState.custom_phones[body.person.trim()] = body.phone.trim();
       await saveSystemState(sysState);
     }
-    return res.status(200).json({ ok: true, clean_phone: formatWaPhone(body.phone) });
+    return res.status(200).json({ success: true, ok: true, clean_phone: formatWaPhone(body.phone) });
   }
 
   // 12. DELETE or POST /api/portal/request/{id}/delete
