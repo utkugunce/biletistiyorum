@@ -1637,7 +1637,7 @@ function bindUIEvents() {
   });
 
   document.getElementById("btnOpenOriginalArena").addEventListener("click", () => {
-    openImageModal("Başkent Voleybol Salonu — Genel Oturma Planı", "/assets/tribun/oturma planı.png");
+    openImageModal("Başkent Voleybol Salonu — Genel Oturma Planı", "/assets/tribun/oturma_plani.png");
   });
 
   document.getElementById("btnCloseImageModal").addEventListener("click", () => {
