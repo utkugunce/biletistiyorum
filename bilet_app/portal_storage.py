@@ -6,11 +6,84 @@ ana Bilet Takip / Dağıtım paneliyle çift yönlü senkronize eder.
 """
 
 import json
+import os
 import re
+import urllib.parse
 import urllib.request
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://kgchdufcqgyhycgyydhf.supabase.co").rstrip("/")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_publishable_aT8iwPOs6AOg5HfaAQpGhg_TlvHwG2T")
+
+
+def _supabase_headers(extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Content-Type": "application/json",
+    }
+    if SUPABASE_KEY.startswith("eyJ"):
+        headers["Authorization"] = f"Bearer {SUPABASE_KEY}"
+    if extra:
+        headers.update(extra)
+    return headers
+
+
+def supabase_upsert_request(req_obj: Dict[str, Any]) -> bool:
+    """Talebi Supabase'e ekler veya günceller."""
+    try:
+        row = {
+            "id": req_obj.get("id", ""),
+            "match_name": req_obj.get("match_name", "Zeren Spor - Kuzeyboru"),
+            "person": req_obj.get("person", ""),
+            "department": req_obj.get("department", ""),
+            "phone": req_obj.get("phone", ""),
+            "ticket_type": req_obj.get("ticket_type", "Davetiye / Protokol"),
+            "requested_count": int(req_obj.get("requested_count", 1)),
+            "target_block": req_obj.get("target_block", "121"),
+            "description": req_obj.get("description", ""),
+            "status": req_obj.get("status", "pending"),
+            "assigned_seats": req_obj.get("assigned_seats", []),
+            "assigned_block": req_obj.get("assigned_block", ""),
+            "whatsapp_sent": bool(req_obj.get("whatsapp_sent", False)),
+            "whatsapp_sent_at": req_obj.get("whatsapp_sent_at"),
+        }
+        url = f"{SUPABASE_URL}/rest/v1/portal_requests"
+        data = json.dumps(row).encode("utf-8")
+        req = urllib.request.Request(
+            url,
+            data=data,
+            method="POST",
+            headers=_supabase_headers({"Prefer": "resolution=merge-duplicates,return=minimal"}),
+        )
+        with urllib.request.urlopen(req, timeout=4) as res:
+            return res.status in (200, 201, 204)
+    except Exception:
+        return False
+
+
+def supabase_delete_request(request_id: str) -> bool:
+    """Talebi Supabase'den siler."""
+    try:
+        enc_id = urllib.parse.quote(request_id, safe="")
+        url = f"{SUPABASE_URL}/rest/v1/portal_requests?id=eq.{enc_id}"
+        req = urllib.request.Request(url, method="DELETE", headers=_supabase_headers())
+        with urllib.request.urlopen(req, timeout=4) as res:
+            return res.status in (200, 204)
+    except Exception:
+        return False
+
+
+def supabase_clear_all() -> bool:
+    """Tüm talepleri Supabase'den temizler."""
+    try:
+        url = f"{SUPABASE_URL}/rest/v1/portal_requests?id=neq.__NONE__"
+        req = urllib.request.Request(url, method="DELETE", headers=_supabase_headers())
+        with urllib.request.urlopen(req, timeout=4) as res:
+            return res.status in (200, 204)
+    except Exception:
+        return False
 
 PORTAL_DATA_DIR = Path(__file__).resolve().parent / "data"
 PORTAL_REQUESTS_FILE = PORTAL_DATA_DIR / "portal_requests.json"
@@ -249,10 +322,37 @@ def create_portal_request(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     requests.insert(0, entry)
     save_portal_requests(requests)
+    supabase_upsert_request(entry)
     return entry
 
 
 def sync_requests_from_vercel() -> int:
+    added = 0
+    local_reqs = load_portal_requests()
+    existing_map = {r.get("id"): r for r in local_reqs if r.get("id")}
+
+    # 1. Önce doğrudan Supabase'den çek
+    try:
+        sb_url = f"{SUPABASE_URL}/rest/v1/portal_requests?select=*&order=created_at.desc"
+        req = urllib.request.Request(sb_url, headers=_supabase_headers())
+        with urllib.request.urlopen(req, timeout=4) as res:
+            if res.status == 200:
+                sb_rows = json.loads(res.read().decode("utf-8"))
+                if isinstance(sb_rows, list):
+                    for sr in sb_rows:
+                        rid = sr.get("id")
+                        if not rid:
+                            continue
+                        if not sr.get("phone") and sr.get("person"):
+                            sr["phone"] = get_person_phone(sr["person"])
+                        if rid not in existing_map:
+                            local_reqs.append(sr)
+                            existing_map[rid] = sr
+                            added += 1
+    except Exception:
+        pass
+
+    # 2. Yedek olarak Vercel API'den de kontrol et
     try:
         url = "https://biletistiyorum.vercel.app/api/portal/request"
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
@@ -260,20 +360,20 @@ def sync_requests_from_vercel() -> int:
             if res.status == 200:
                 cloud_reqs = json.loads(res.read().decode("utf-8"))
                 if cloud_reqs and isinstance(cloud_reqs, list):
-                    local_reqs = load_portal_requests()
-                    existing_ids = {r.get("id") for r in local_reqs}
-                    added = 0
                     for cr in cloud_reqs:
-                        if cr.get("id") not in existing_ids:
+                        rid = cr.get("id")
+                        if rid and rid not in existing_map:
+                            if not cr.get("phone") and cr.get("person"):
+                                cr["phone"] = get_person_phone(cr["person"])
                             local_reqs.append(cr)
-                            existing_ids.add(cr.get("id"))
+                            existing_map[rid] = cr
                             added += 1
-                    if added > 0:
-                        save_portal_requests(local_reqs)
-                    return added
     except Exception:
         pass
-    return 0
+
+    if added > 0:
+        save_portal_requests(local_reqs)
+    return added
 
 
 def get_requests_for_match(match_name: str) -> List[Dict[str, Any]]:
@@ -292,6 +392,7 @@ def get_requests_for_match(match_name: str) -> List[Dict[str, Any]]:
 
 
 def get_requests_by_person(person_query: str) -> List[Dict[str, Any]]:
+    sync_requests_from_vercel()
     requests = load_portal_requests()
     q = person_query.strip().lower()
     if not q:
@@ -343,6 +444,7 @@ def update_request_fulfillment(
         target_req["status_label"] = "İnceleniyor (Bekliyor)"
 
     save_portal_requests(requests)
+    supabase_upsert_request(target_req)
     return target_req
 
 
@@ -355,6 +457,7 @@ def delete_portal_request(request_id: str) -> Optional[Dict[str, Any]]:
             target = r
         else:
             new_requests.append(r)
+    supabase_delete_request(request_id)
     if target is not None:
         save_portal_requests(new_requests)
         return target
@@ -363,6 +466,7 @@ def delete_portal_request(request_id: str) -> Optional[Dict[str, Any]]:
 
 def clear_all_portal_requests() -> None:
     save_portal_requests([])
+    supabase_clear_all()
 
 
 def set_request_whatsapp_sent(request_id: str, sent: bool = True) -> Optional[Dict[str, Any]]:
@@ -373,6 +477,7 @@ def set_request_whatsapp_sent(request_id: str, sent: bool = True) -> Optional[Di
     target_req["whatsapp_sent"] = sent
     target_req["whatsapp_sent_at"] = datetime.now().isoformat() if sent else None
     save_portal_requests(requests)
+    supabase_upsert_request(target_req)
     return target_req
 
 
@@ -385,6 +490,7 @@ def update_request_phone(request_id: str, phone: str) -> Optional[Dict[str, Any]
         if target_req.get("person"):
             save_person_phone(target_req["person"], clean_p)
         save_portal_requests(requests)
+        supabase_upsert_request(target_req)
         return target_req
     return None
 

@@ -1,14 +1,40 @@
-// In-memory store on Vercel runtime (cached per instance)
-let requestsStore = [];
+const SUPABASE_URL = process.env.SUPABASE_URL || "https://kgchdufcqgyhycgyydhf.supabase.co";
+const SUPABASE_KEY = process.env.SUPABASE_KEY || "sb_publishable_aT8iwPOs6AOg5HfaAQpGhg_TlvHwG2T";
+
+// Fallback in-memory store if SQL table is not created yet
+let fallbackStore = [];
+
+function getHeaders(extra = {}) {
+  const h = {
+    apikey: SUPABASE_KEY,
+    "Content-Type": "application/json",
+    ...extra
+  };
+  if (SUPABASE_KEY.startsWith("eyJ")) {
+    h.Authorization = `Bearer ${SUPABASE_KEY}`;
+  }
+  return h;
+}
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,DELETE,PATCH,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, apikey, Authorization");
   if (req.method === "OPTIONS") return res.status(200).end();
 
   if (req.method === "GET") {
-    return res.status(200).json(requestsStore);
+    try {
+      const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/portal_requests?select=*&order=created_at.desc`, {
+        headers: getHeaders()
+      });
+      if (sbRes.ok) {
+        const data = await sbRes.json();
+        return res.status(200).json(data);
+      }
+    } catch (e) {
+      // Fallback to in-memory
+    }
+    return res.status(200).json(fallbackStore);
   }
 
   if (req.method === "POST") {
@@ -27,8 +53,8 @@ export default async function handler(req, res) {
         return res.status(400).json({ detail: "Personel seçimi zorunludur." });
       }
 
-      const seq = String(requestsStore.length + 1).padStart(3, "0");
-      const id = `ZS-${seq}`;
+      const rand = Math.floor(100 + Math.random() * 900);
+      const id = body.id || `ZS-${rand}`;
       const now = new Date().toISOString();
 
       const newReq = {
@@ -48,7 +74,24 @@ export default async function handler(req, res) {
         whatsapp_sent: false
       };
 
-      requestsStore.push(newReq);
+      // Try inserting into Supabase
+      try {
+        const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/portal_requests`, {
+          method: "POST",
+          headers: getHeaders({ Prefer: "return=representation" }),
+          body: JSON.stringify(newReq)
+        });
+        if (sbRes.ok) {
+          const inserted = await sbRes.json();
+          if (Array.isArray(inserted) && inserted.length > 0) {
+            return res.status(200).json(inserted[0]);
+          }
+        }
+      } catch (e) {
+        // Fallback if table not created yet
+      }
+
+      fallbackStore.push(newReq);
       return res.status(200).json(newReq);
     } catch (err) {
       return res.status(500).json({ detail: "Talep işlenirken hata oluştu: " + err.message });
