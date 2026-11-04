@@ -1,0 +1,338 @@
+{
+  "last_folder": "C:\\Users\\UtkuGünçe-ZerenSporK\\Downloads\\wetransfer_121-blok_2026-10-15_1215\\Zeren_Bilet_Maclar\\Zeren Spor - Kuzeyboru",
+  "group_colors": {
+    "fenerbahçe": "#1D4ED8",
+    "seda": "#9333EA",
+    "eşref": "#059669",
+    "utku": "#EA580C",
+    "neslihan": "#DB2777",
+    "ASC": "#0891B2",
+    "berk çanakcı": "#4F46E5",
+    "burak eser": "#0D9488",
+    "MYZ": "#7C3AED",
+    "çağlar": "#E11D48",
+    "diğer": "#F59E0B",
+    "rakip kulüp": "#2563EB",
+    "Utku Gunce": "#D97706",
+    "Çağlar Oskay": "#65A30D"
+  },
+  "saved_groups": [
+    {
+      "group": "rakip kulüp",
+      "subgroups": []
+    },
+    {
+      "group": "seda",
+      "subgroups": [
+        "fatma",
+        "seda",
+        "dicle"
+      ]
+    },
+    {
+      "group": "eşref",
+      "subgroups": [
+        "spor şube",
+        "eşref1",
+        "eşref2"
+      ]
+    },
+    {
+      "group": "utku",
+      "subgroups": [
+        "gözde",
+        "metubiz",
+        "redbull"
+      ]
+    },
+    {
+      "group": "neslihan",
+      "subgroups": []
+    },
+    {
+      "group": "ASC",
+      "subgroups": []
+    },
+    {
+      "group": "berk çanakcı",
+      "subgroups": []
+    },
+    {
+      "group": "burak eser",
+      "subgroups": []
+    },
+    {
+      "group": "MYZ",
+      "subgroups": []
+    },
+    {
+      "group": "çağlar",
+      "subgroups": [
+        "sırtlı"
+      ]
+    },
+    {
+      "group": "diğer",
+      "subgroups": []
+    }
+  ],
+  "history": [
+    {
+      "id": "20261031_134818",
+      "saved_at": "31.10.2026 13:48",
+      "folder": "C:\\Users\\UtkuGünçe-ZerenSporK\\Downloads\\wetransfer_121-blok_2026-10-15_1215\\121 BLOK",
+      "match_name": "Davetli - Blok/Sıra/Koltuk:",
+      "match_date": "2026-10-18 15:00",
+      "total_tickets": 154,
+      "assigned_tickets": 130,
+      "diger_tickets": 24,
+      "groups": [
+        {
+          "group": "seda",
+          "total": 35,
+          "subgroups": [
+            {
+              "name": "seda/dicle",
+              "count": 5,
+              "ranges": [
+                "3-7..3-11"
+              ]
+            },
+            {
+              "name": "seda/fatma",
+              "count": 20,
+              "ranges": [
+                "3-20..3-23",
+                "4-8..4-23"
+              ]
+            },
+            {
+              "name": "seda/seda",
+              "count": 10,
+              "ranges": [
+                "8-1..8-10"
+              ]
+            }
+          ]
+        },
+        {
+          "group": "eşref",
+          "total": 30,
+          "subgroups": [
+            {
+              "name": "eşref/eşref1",
+              "count": 5,
+              "ranges": [
+                "9-6..9-10"
+              ]
+            },
+            {
+              "name": "eşref/eşref2",
+              "count": 5,
+              "ranges": [
+                "5-1..5-5"
+              ]
+            },
+            {
+              "name": "eşref/spor şube",
+              "count": 20,
+              "ranges": [
+                "8-16..8-23",
+                "9-11..9-22"
+              ]
+            }
+          ]
+        },
+        {
+          "group": "fenerbahçe",
+          "total": 30,
+          "subgroups": [
+            {
+              "name": "fenerbahçe",
+              "count": 30,
+              "ranges": [
+                "4-6..4-7",
+                "5-6..5-23",
+                "6-8..6-17"
+              ]
+            }
+          ]
+        },
+        {
+          "group": "neslihan",
+          "total": 7,
+          "subgroups": [
+            {
+              "name": "neslihan",
+              "count": 7,
+              "ranges": [
+                "6-1..6-7"
+              ]
+            }
+          ]
+        },
+        {
+          "group": "utku",
+          "total": 7,
+          "subgroups": [
+            {
+              "name": "utku/gözde",
+              "count": 3,
+              "ranges": [
+                "9-3..9-5"
+              ]
+            },
+            {
+              "name": "utku/metubiz",
+              "count": 2,
+              "ranges": [
+                "7-5..7-6"
+              ]
+            },
+            {
+              "name": "utku/redbull",
+              "count": 2,
+              "ranges": [
+                "7-7..7-8"
+              ]
+            }
+          ]
+        },
+        {
+          "group": "ASC",
+          "total": 6,
+          "subgroups": [
+            {
+              "name": "ASC",
+              "count": 6,
+              "ranges": [
+                "3-16..3-19",
+                "7-9..7-10"
+              ]
+            }
+          ]
+        },
+        {
+          "group": "berk çanakcı",
+          "total": 5,
+          "subgroups": [
+            {
+              "name": "berk çanakcı",
+              "count": 5,
+              "ranges": [
+                "4-1..4-5"
+              ]
+            }
+          ]
+        },
+        {
+          "group": "burak eser",
+          "total": 4,
+          "subgroups": [
+            {
+              "name": "burak eser",
+              "count": 4,
+              "ranges": [
+                "8-11..8-14"
+              ]
+            }
+          ]
+        },
+        {
+          "group": "MYZ",
+          "total": 4,
+          "subgroups": [
+            {
+              "name": "MYZ",
+              "count": 4,
+              "ranges": [
+                "3-12..3-15"
+              ]
+            }
+          ]
+        },
+        {
+          "group": "çağlar",
+          "total": 2,
+          "subgroups": [
+            {
+              "name": "çağlar/sırtlı",
+              "count": 2,
+              "ranges": [
+                "9-1..9-2"
+              ]
+            }
+          ]
+        },
+        {
+          "group": "diğer",
+          "total": 24,
+          "subgroups": [
+            {
+              "name": "diğer",
+              "count": 24,
+              "ranges": [
+                "6-18..6-23",
+                "7-1..7-4, 7-11..7-23",
+                "8-15"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "matches": [
+    {
+      "id": "20261108_kuzeyboru",
+      "title": "Zeren Spor - Kuzeyboru",
+      "date": "08.11.2026 16:00",
+      "folder": "C:\\Users\\UtkuGünçe-ZerenSporK\\Downloads\\wetransfer_121-blok_2026-10-15_1215\\Zeren_Bilet_Maclar\\Zeren Spor - Kuzeyboru",
+      "created_at": "02.11.2026 10:30",
+      "active": true
+    }
+  ],
+  "archived_matches": [
+    {
+      "id": "20261031140733",
+      "title": "Zeren Spor Kulübü - Fenerbahçe MEDICANA",
+      "date": "2026-10-18 15:00",
+      "folder": "C:\\Users\\UtkuGünçe-ZerenSporK\\Downloads\\wetransfer_121-blok_2026-10-15_1215\\121 BLOK",
+      "created_at": "31.10.2026 14:07"
+    },
+    {
+      "id": "20261031144157_ilbank",
+      "title": "Zeren Spor Kulübü - İlbank",
+      "date": "",
+      "folder": "C:\\Users\\UtkuGünçe-ZerenSporK\\Downloads\\wetransfer_121-blok_2026-10-15_1215\\Zeren_Bilet_Maclar\\Zeren Spor - İlbank",
+      "created_at": "31.10.2026 14:41",
+      "from_excel": true,
+      "excel_match_name": "İlbank"
+    },
+    {
+      "id": "20261031144157_besiktas",
+      "title": "Zeren Spor Kulübü - Beşiktaş",
+      "date": "",
+      "folder": "C:\\Users\\UtkuGünçe-ZerenSporK\\Downloads\\wetransfer_121-blok_2026-10-15_1215\\Zeren_Bilet_Maclar\\Zeren Spor - Beşiktaş",
+      "created_at": "31.10.2026 14:41",
+      "from_excel": true,
+      "excel_match_name": "Beşiktaş"
+    }
+  ],
+  "admin_password": "zeren2026",
+  "admin_tokens": [
+    "671a0132ff60cc82a1b3d0106378dd0481f10701c5c84384",
+    "db10ec10d83e4990d85dc39c3c7a58aa7379f20cf46b199f",
+    "4fb2cce2608bc5cbcb47e03157c615b1da05aaf437f470d3",
+    "57e0f84b504442abe8c00875f08c62f9230cd7bd0cf36c9a",
+    "497408d76ea0c73abf6eba161251a2ea1a841d1a2ec6be59",
+    "e56e54c5d8655a794b97a4e54ee91f7bfa81b02585c15b42",
+    "4c74fb7cf14b7d2f74d95d9a0a4b9ea42f2aaaca60530a58",
+    "507fa3b349fcacc7dbdcfbf802b39f89975e9980e015ab13",
+    "8f1b26d6fa69fa5a6eb3c87091dd87ea36a9d074a055a313",
+    "112bc9897a91abe7e588d5365181bd8ef871798441e2f7a8",
+    "0185ff83460db195d9986826846e4982ad0486c75a2646be",
+    "ed75d716957ac18beac9638e86b914941142398cc3c727a3",
+    "98cbbe401454378ea3a6fe7e8b7961f217b37d63febf3742"
+  ]
+}

@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Vercel
+.vercel/
+biletistiyorum/.vercel/
+
+# OS & Temp
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+
+# Local match PDF folders in root (keep app code & assets clean)
+ASC/
+berk*/
+burak*/
+diğer/
+di*er/
+eşref/
+e*ref/
+fenerbahçe/
+fenerbah*e/
+MYZ/
+neslihan/
+seda/
+utku/
+çağlar/
+*a*lar/
+*.pdf

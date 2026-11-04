@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bilet İstiyorum — Zeren Spor Kulübü Personel Bilet Portalı</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  
+  <link rel="icon" type="image/png" href="/static/zeren_logo.png" />
+  <link rel="stylesheet" href="/static/bilet_istiyorum.css" />
+  <!-- PWA Meta Tags & Manifest -->
+  <meta name="theme-color" content="#3b0764" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Bilet Portalı" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.json" />
+
+</head>
+<body>
+
+  <!-- ========================================================= -->
+  <!-- 1. ÜST NAVİGASYON (HEADER)                                -->
+  <!-- ========================================================= -->
+  <header class="portal-header">
+    <div class="header-inner">
+      <div class="brand-group">
+        <div class="brand-logo-mark">
+          <img src="/static/zeren_logo.png" alt="Zeren Spor Kulübü" class="brand-logo-img" />
+        </div>
+        <div class="brand-text">
+          <div class="brand-sup">ZEREN SPOR KULÜBÜ</div>
+          <h1 class="brand-title">BİLET İSTİYORUM</h1>
+        </div>
+      </div>
+
+      <nav class="portal-nav" role="tablist">
+        <button class="nav-tab-btn active" id="btnNavNewRequest" data-tab="tab-request">
+          <i class="ph-bold ph-ticket"></i>
+          <span>Bilet Talep Et</span>
+        </button>
+        <button class="nav-tab-btn" id="btnNavArenaInfo" data-tab="tab-arena-guide">
+          <i class="ph-bold ph-stadium"></i>
+          <span>Salon Rehberi</span>
+        </button>
+      </nav>
+
+      <div class="header-right">
+        <a href="/" class="admin-link-btn" title="Koltuk Dağıtım ve Yönetim Paneli">
+          <i class="ph-bold ph-shield-check"></i>
+          <span>Yönetici Paneli</span>
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================= -->
+  <!-- 2. ANA İÇERİK KONTEYNERİ                                   -->
+  <!-- ========================================================= -->
+  <main class="portal-container">
+
+    <!-- ======================================================= -->
+    <!-- SEKME 1: YENİ BİLET TALEBİ FORMU                       -->
+    <!-- ======================================================= -->
+    <section class="portal-tab-content active" id="tab-request">
+      <!-- Talep Form Kartı -->
+      <div class="form-container-card">
+        <form id="formTicketRequest" onsubmit="return false;">
+
+          <!-- ADIM 1: MAÇ SEÇİMİ -->
+          <div class="form-section-block">
+            <div class="section-badge-header">
+              <span class="step-num">1</span>
+              <div>
+                <h3>Maç Seçimi</h3>
+                <p>Bilet talep etmek istediğiniz karşılaşmayı açılır menüden seçin</p>
+              </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="selectMatchDropdown" class="input-label">
+                Karşılaşma <span class="required">*</span>
+              </label>
+              <div class="input-with-icon">
+                <i class="ph ph-volleyball"></i>
+                <select id="selectMatchDropdown" class="form-ctrl select-match-dropdown" required>
+                  <option value="Zeren Spor Kulübü - Kuzeyboru" selected>Zeren Spor Kulübü - Kuzeyboru (08.11.2026 16:00)</option>
+                </select>
+              </div>
+              <div class="selected-match-meta-pill" id="selectedMatchMeta" style="margin-top: 10px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: #1e293b; background: #f8fafc; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <span style="display:inline-flex; align-items:center; gap:6px; font-weight:600; color:#4338ca;">
+                  <i class="ph-bold ph-calendar-blank"></i>
+                  <span id="matchDateText">8 Kasım 2026, Pazar 16:00</span>
+                </span>
+                <span style="color: #cbd5e1;">•</span>
+                <span style="display:inline-flex; align-items:center; gap:6px; color:#475569;">
+                  <i class="ph-bold ph-map-pin" style="color: #ef4444;"></i>
+                  <span>TVF Ziraat Bankkart Voleybol Salonu</span>
+                </span>
+              </div>
+              <input type="hidden" id="selectedMatchName" value="Zeren Spor Kulübü - Kuzeyboru" required />
+            </div>
+          </div>
+
+          <!-- ADIM 2: TALEP EDEN PERSONEL -->
+          <div class="form-section-block">
+            <div class="section-badge-header">
+              <span class="step-num">2</span>
+              <div>
+                <h3>Talep Eden Personel</h3>
+                <p>Aşağıdaki gruplardan adınızı seçebilir veya doğrudan adınızı yazabilirsiniz</p>
+              </div>
+            </div>
+
+            <!-- Ad Soyad Kutusu ve Aktif Seçim Rozeti -->
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label for="inputPersonName" class="input-label">
+                Talep Eden Ad Soyad <span class="required">*</span>
+              </label>
+              <div class="input-with-icon">
+                <i class="ph-bold ph-user-circle"></i>
+                <input
+                  type="text"
+                  id="inputPersonName"
+                  class="form-ctrl"
+                  placeholder="Gruplardan adınızı seçin veya buraya yazın..."
+                  required
+                />
+              </div>
+              <div id="selectedPersonBadge" class="selected-person-pill hidden">
+                <div class="badge-left">
+                  <i class="ph-bold ph-check-circle"></i>
+                  <span id="selectedPersonText"></span>
+                </div>
+                <button type="button" id="btnClearSelectedPerson" class="btn-clear-selection" title="Seçimi Temizle">
+                  <i class="ph-bold ph-x"></i>
+                  <span>Temizle</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Gruplandırılmış, Açılır-Kapanır Personel Akordeonu -->
+            <div class="staff-accordion-wrapper">
+              <div class="accordion-toolbar">
+                <div class="staff-search-box">
+                  <i class="ph ph-magnifying-glass"></i>
+                  <input
+                    type="text"
+                    id="inputStaffSearch"
+                    placeholder="İsim ile hızlı ara..."
+                    autocomplete="off"
+                  />
+                  <button type="button" id="btnClearStaffSearch" class="btn-clear-search hidden">
+                    <i class="ph ph-x"></i>
+                  </button>
+                </div>
+                <button type="button" class="btn-toggle-all-groups" id="btnToggleAllGroups" title="Tüm grupları genişlet veya daralt">
+                  <i class="ph-bold ph-arrows-out-line-vertical" id="iconToggleAll"></i>
+                  <span id="textToggleAll">Tümünü Aç</span>
+                </button>
+              </div>
+
+              <!-- Dinamik Accordion Grupları -->
+              <div class="staff-accordion-list" id="staffAccordionList">
+                <!-- JS tarafından doldurulacak -->
+              </div>
+            </div>
+
+            <!-- Gizli dropdown (arka plan uyumluluğu için) -->
+            <select id="selectStaffDropdown" class="hidden"></select>
+          </div>
+
+          <!-- ADIM 3: BİLET DETAYLARI & TERCİHLER -->
+          <div class="form-section-block">
+            <div class="section-badge-header">
+              <span class="step-num">3</span>
+              <div>
+                <h3>Bilet Detayları & Tercihler</h3>
+                <p>Kaç adet bilet istediğinizi ve tribün tercihinizi belirtin</p>
+              </div>
+            </div>
+
+            <div class="form-row-2">
+              <!-- Bilet Adedi Stepper -->
+              <div class="form-group">
+                <label class="input-label">Bilet Adedi <span class="required">*</span></label>
+                <div class="ticket-stepper-box">
+                  <div class="stepper-controls">
+                    <button type="button" class="step-btn" id="btnCountMinus">
+                      <i class="ph-bold ph-minus"></i>
+                    </button>
+                    <input
+                      type="number"
+                      id="inputTicketCount"
+                      class="step-val-input"
+                      value="2"
+                      min="1"
+                      max="100"
+                      required
+                    />
+                    <button type="button" class="step-btn" id="btnCountPlus">
+                      <i class="ph-bold ph-plus"></i>
+                    </button>
+                  </div>
+                  <div class="quick-count-chips">
+                    <button type="button" class="cnt-chip" data-cnt="1">1</button>
+                    <button type="button" class="cnt-chip active" data-cnt="2">2</button>
+                    <button type="button" class="cnt-chip" data-cnt="4">4</button>
+                    <button type="button" class="cnt-chip" data-cnt="6">6</button>
+                    <button type="button" class="cnt-chip" data-cnt="10">10</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Tercih Edilen Blok -->
+              <div class="form-group">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                  <label for="selectTargetBlock" class="input-label" style="margin-bottom: 0;">
+                    Tercih Edilen Blok / Tribün
+                  </label>
+                  <button type="button" class="btn-text-link" id="btnShortcutArenaGuide" style="background: none; border: none; color: #4f46e5; font-size: 12.5px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; padding: 0;">
+                    <i class="ph-bold ph-stadium"></i>
+                    <span>Salon Haritasında Gör</span>
+                  </button>
+                </div>
+                <div class="input-with-icon">
+                  <i class="ph ph-armchair"></i>
+                  <select id="selectTargetBlock" class="form-ctrl">
+                    <option value="121" selected>121 Blok (Protokol Yanı)</option>
+                    <option value="102">102 Blok (Güney Alt)</option>
+                    <option value="103">103 Blok (Güney Alt)</option>
+                    <option value="106">106 Blok (Altyapı & Aile Tribünü)</option>
+                    <option value="110">110 Blok (Kuzey Alt)</option>
+                    <option value="113">113 Blok (Kuzey Alt)</option>
+                    <option value="114">114 Blok (Kuzey Alt)</option>
+                    <option value="120">120 Blok (Güney Alt)</option>
+                    <option value="208">208 Blok (Kuzey Üst Tribün)</option>
+                    <option value="210">210 Blok (Kuzey Üst Tribün)</option>
+                    <option value="212">212 Blok (Kuzey Üst Tribün)</option>
+                    <option value="Saha İçi">Saha İçi (Özel Protokol & VIP)</option>
+                    <option value="">Farketmez (Sistem Uygun Yeri Belirlesin)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- WhatsApp Telefon Numarası -->
+            <div class="form-row-full" style="margin-top: 14px;">
+              <div class="form-group">
+                <label for="inputPhoneNumber" class="input-label">
+                  WhatsApp Telefon Numarası <span class="opt">(Biletiniz WhatsApp üzerinden iletilecektir)</span>
+                </label>
+                <div class="input-with-icon">
+                  <i class="ph-bold ph-whatsapp-logo" style="color: #22c55e;"></i>
+                  <input
+                    type="tel"
+                    id="inputPhoneNumber"
+                    class="form-ctrl"
+                    placeholder="05xx xxx xx xx"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div class="form-row-full" style="margin-top: 14px;">
+              <div class="form-group">
+                <label for="inputDescription" class="input-label">
+                  Talep Nedeni / Misafir Notu <span class="opt">(İsteğe Bağlı)</span>
+                </label>
+                <div class="input-with-icon">
+                  <i class="ph ph-chat-text"></i>
+                  <input
+                    type="text"
+                    id="inputDescription"
+                    class="form-ctrl"
+                    placeholder="Örn: Ailem için, Sponsor yetkilisi, Spor şube misafirleri vb."
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- GÖNDERME BUTONU -->
+          <div class="form-submit-footer">
+            <button type="submit" class="submit-request-btn" id="btnSubmitRequest">
+              <i class="ph-bold ph-paper-plane-tilt"></i>
+              <span>Bilet Talebimi Gönder</span>
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </section>
+
+    <!-- ======================================================= -->
+    <!-- SEKME 2: SALON REHBERİ (ORİJİNAL OTURMA PLANI)         -->
+    <!-- ======================================================= -->
+    <section class="portal-tab-content hidden" id="tab-arena-guide">
+      <div class="arena-guide-card">
+        <div class="original-plan-header">
+          <div class="plan-header-info">
+            <div class="plan-header-icon">
+              <i class="ph-fill ph-stadium"></i>
+            </div>
+            <div>
+              <h2>TVF Başkent Voleybol Salonu — Oturma Planı</h2>
+              <p class="plan-notice-text">
+                <i class="ph-fill ph-warning-circle"></i>
+                <span>Kırmızı ile gösterilen bloklar satışa ve genel dağıtıma kapalıdır.</span>
+              </p>
+            </div>
+          </div>
+          <div class="plan-header-actions">
+            <a href="/assets/tribun/oturma%20plan%C4%B1.png" target="_blank" class="btn-plan-download" title="Orijinal Planı Tam Boyut Aç">
+              <i class="ph-bold ph-magnifying-glass-plus"></i>
+              <span>Planı Büyüt</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="original-plan-viewer">
+          <img
+            src="/assets/tribun/oturma%20plan%C4%B1.png"
+            alt="TVF Başkent Voleybol Salonu Oturma Planı"
+            class="arena-direct-plan-img"
+          />
+        </div>
+
+        <div class="plan-legend-footer">
+          <div class="plan-legend-row">
+            <span class="plan-legend-pill open-pill">
+              <span class="legend-dot-circle open"></span>
+              <span>Açık Tribünler (121 VIP Protokol Yanı, 102-106, 110-114, 208-212 vb.)</span>
+            </span>
+            <span class="plan-legend-pill closed-pill">
+              <span class="legend-dot-circle closed"></span>
+              <span>Kırmızı Alanlar (Protokol &amp; Satışa Kapalı Bloklar)</span>
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================================= -->
+  <!-- 3. TALEP BAŞARI MODALI                                    -->
+  <!-- ========================================================= -->
+  <div class="portal-modal-backdrop hidden" id="modalRequestSuccess">
+    <div class="portal-modal-card">
+      <div class="modal-success-badge">
+        <i class="ph-fill ph-check-circle"></i>
+      </div>
+      <h2>Bilet Talebiniz Alındı!</h2>
+      <p class="modal-sub">
+        Talebiniz Zeren Spor Bilet Yönetimi'ne iletilmiştir.
+      </p>
+
+      <div class="success-ticket-receipt">
+        <div class="receipt-row">
+          <span class="rc-label">Takip Kodu:</span>
+          <strong class="rc-val rc-code" id="receiptCode">ZEREN-2026-0001</strong>
+        </div>
+        <div class="receipt-row">
+          <span class="rc-label">Maç:</span>
+          <span class="rc-val" id="receiptMatch">Zeren Spor Kulübü - Kuzeyboru</span>
+        </div>
+        <div class="receipt-row">
+          <span class="rc-label">Talep Eden:</span>
+          <span class="rc-val" id="receiptPerson">Seda Canlı</span>
+        </div>
+        <div class="receipt-row">
+          <span class="rc-label">Adet / Blok:</span>
+          <span class="rc-val" id="receiptCountBlock">2 Adet · 121 Blok</span>
+        </div>
+      </div>
+
+      <div class="modal-actions-group">
+        <button class="btn-primary-portal" id="btnCloseSuccessModal" style="width: 100%; justify-content: center;">
+          <i class="ph-bold ph-check"></i>
+          <span>Tamam (Yeni Talep Gönder)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST BİLDİRİM KUTUSU -->
+  <div class="portal-toast-container" id="portalToastContainer"></div>
+
+  <!-- JS Dosyası -->
+  <script src="/static/bilet_istiyorum.js"></script>
+  <!-- PWA YÜKLEME BANNERI (MOBİL & MASAÜSTÜ) -->
+  <div id="pwaInstallBanner" class="pwa-install-banner hidden">
+    <div class="pwa-banner-left">
+      <img src="/icons/icon-192.png" alt="Zeren Spor" class="pwa-banner-icon" />
+      <div class="pwa-banner-texts">
+        <strong>Zeren Spor Bilet Portalı</strong>
+        <span>Telefonunuza uygulama olarak yükleyin</span>
+      </div>
+    </div>
+    <div class="pwa-banner-actions">
+      <button id="btnPwaInstall" class="btn-pwa-install">
+        <i class="ph-bold ph-download-simple"></i>
+        <span>Yükle</span>
+      </button>
+      <button id="btnPwaDismiss" class="btn-pwa-dismiss" title="Kapat">
+        <i class="ph ph-x"></i>
+      </button>
+    </div>
+  </div>
+
+</body>
+</html>

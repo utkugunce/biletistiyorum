@@ -1,0 +1,12 @@
+{
+  "version": 2,
+  "name": "biletistiyorum",
+  "rewrites": [
+    { "source": "/api/portal/matches", "destination": "/api/matches" },
+    { "source": "/api/portal/staff", "destination": "/api/staff" },
+    { "source": "/api/portal/request", "destination": "/api/request" },
+    { "source": "/api/portal/my-requests", "destination": "/api/my-requests" },
+    { "source": "/bilet-istiyorum", "destination": "/index.html" },
+    { "source": "/talep", "destination": "/index.html" }
+  ]
+}
