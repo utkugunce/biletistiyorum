@@ -78,7 +78,7 @@ def supabase_delete_request(request_id: str) -> bool:
 def supabase_clear_all() -> bool:
     """Tüm talepleri Supabase'den temizler."""
     try:
-        url = f"{SUPABASE_URL}/rest/v1/portal_requests?id=neq.__NONE__"
+        url = f"{SUPABASE_URL}/rest/v1/portal_requests?id=neq.__SYSTEM_STATE__"
         req = urllib.request.Request(url, method="DELETE", headers=_supabase_headers())
         with urllib.request.urlopen(req, timeout=4) as res:
             return res.status in (200, 204)
@@ -333,7 +333,7 @@ def sync_requests_from_vercel() -> int:
 
     # 1. Önce doğrudan Supabase'den çek
     try:
-        sb_url = f"{SUPABASE_URL}/rest/v1/portal_requests?select=*&order=created_at.desc"
+        sb_url = f"{SUPABASE_URL}/rest/v1/portal_requests?id=neq.__SYSTEM_STATE__&select=*&order=created_at.desc"
         req = urllib.request.Request(sb_url, headers=_supabase_headers())
         with urllib.request.urlopen(req, timeout=4) as res:
             if res.status == 200:
@@ -341,7 +341,7 @@ def sync_requests_from_vercel() -> int:
                 if isinstance(sb_rows, list):
                     for sr in sb_rows:
                         rid = sr.get("id")
-                        if not rid:
+                        if not rid or rid == "__SYSTEM_STATE__":
                             continue
                         if not sr.get("phone") and sr.get("person"):
                             sr["phone"] = get_person_phone(sr["person"])
@@ -349,6 +349,12 @@ def sync_requests_from_vercel() -> int:
                             local_reqs.append(sr)
                             existing_map[rid] = sr
                             added += 1
+                        else:
+                            # Durum veya koltuk güncellemesi varsa senkronize et
+                            ex = existing_map[rid]
+                            if sr.get("status") != ex.get("status") or sr.get("assigned_seats") != ex.get("assigned_seats") or sr.get("whatsapp_sent") != ex.get("whatsapp_sent"):
+                                ex.update(sr)
+                                added += 1
     except Exception:
         pass
 

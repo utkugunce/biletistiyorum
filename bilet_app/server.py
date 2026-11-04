@@ -1700,7 +1700,7 @@ def api_excel_assign(payload: ExcelAssignPayload):
     res = api_assign_seats(assign_req)
 
     # Eğer Bilet İstiyorum talep kodu ise portal kaydını da güncelle
-    if payload.request_id and payload.request_id.startswith("ZEREN-"):
+    if payload.request_id:
         update_request_fulfillment(
             request_id=payload.request_id,
             status="assigned",
@@ -2563,6 +2563,9 @@ def serve_icons(filename: str):
 
 
 @app.get("/")
+@app.get("/admin")
+@app.get("/panel")
+@app.get("/yonetim")
 def serve_index():
     return FileResponse(str(STATIC_DIR / "index.html"))
 

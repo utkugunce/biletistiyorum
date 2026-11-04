@@ -24,7 +24,7 @@ export default async function handler(req, res) {
 
   if (req.method === "GET") {
     try {
-      const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/portal_requests?select=*&order=created_at.desc`, {
+      const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/portal_requests?id=neq.__SYSTEM_STATE__&select=*&order=created_at.desc`, {
         headers: getHeaders()
       });
       if (sbRes.ok) {
