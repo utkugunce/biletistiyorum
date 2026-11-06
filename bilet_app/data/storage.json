@@ -1,79 +1,81 @@
 {
   "last_folder": "C:\\Users\\UtkuGünçe-ZerenSporK\\Downloads\\wetransfer_121-blok_2026-10-15_1215\\Zeren_Bilet_Maclar\\Zeren Spor - Kuzeyboru",
   "group_colors": {
-    "fenerbahçe": "#1D4ED8",
-    "seda": "#9333EA",
-    "eşref": "#059669",
-    "utku": "#EA580C",
-    "neslihan": "#DB2777",
-    "ASC": "#0891B2",
-    "berk çanakcı": "#4F46E5",
-    "burak eser": "#0D9488",
-    "MYZ": "#7C3AED",
-    "çağlar": "#E11D48",
+    "eşref arıcan": "#059669",
+    "Eşref Arıcan": "#059669",
+    "ayşe fidan": "#E11D48",
+    "Ayşe Fidan": "#E11D48",
+    "neslihan erşahin": "#DB2777",
+    "Neslihan Erşahin": "#DB2777",
+    "ömer özdemir": "#2563EB",
+    "Ömer Özdemir": "#2563EB",
+    "tansu ünal": "#D97706",
+    "Tansu Ünal": "#D97706",
+    "aysu balcı": "#0D9488",
+    "Aysu Balcı": "#0D9488",
+    "çağlar oskay": "#4F46E5",
+    "Çağlar Oskay": "#4F46E5",
+    "ahmet salih canbaz": "#0891B2",
+    "Ahmet Salih Canbaz": "#0891B2",
+    "seda canlı": "#9333EA",
+    "Seda Canlı": "#9333EA",
+    "burak eser": "#65A30D",
+    "Burak Eser": "#65A30D",
+    "kerem taha solmaz": "#7C3AED",
+    "Kerem Taha Solmaz": "#7C3AED",
+    "mehmet antep": "#EA580C",
+    "Mehmet Antep": "#EA580C",
     "diğer": "#F59E0B",
-    "rakip kulüp": "#2563EB",
-    "Utku Gunce": "#D97706",
-    "Çağlar Oskay": "#65A30D",
+    "diger": "#F59E0B",
     "SAHA İÇİ": "#0284C7"
   },
   "saved_groups": [
     {
-      "group": "rakip kulüp",
+      "group": "Eşref Arıcan",
       "subgroups": []
     },
     {
-      "group": "seda",
-      "subgroups": [
-        "fatma",
-        "seda",
-        "dicle"
-      ]
-    },
-    {
-      "group": "eşref",
-      "subgroups": [
-        "spor şube",
-        "eşref1",
-        "eşref2"
-      ]
-    },
-    {
-      "group": "utku",
-      "subgroups": [
-        "gözde",
-        "metubiz",
-        "redbull"
-      ]
-    },
-    {
-      "group": "neslihan",
+      "group": "Ayşe Fidan",
       "subgroups": []
     },
     {
-      "group": "ASC",
+      "group": "Neslihan Erşahin",
       "subgroups": []
     },
     {
-      "group": "berk çanakcı",
+      "group": "Ömer Özdemir",
       "subgroups": []
     },
     {
-      "group": "burak eser",
+      "group": "Tansu Ünal",
       "subgroups": []
     },
     {
-      "group": "MYZ",
+      "group": "Aysu Balcı",
       "subgroups": []
     },
     {
-      "group": "çağlar",
-      "subgroups": [
-        "sırtlı"
-      ]
+      "group": "Çağlar Oskay",
+      "subgroups": []
     },
     {
-      "group": "diğer",
+      "group": "Ahmet Salih Canbaz",
+      "subgroups": []
+    },
+    {
+      "group": "Seda Canlı",
+      "subgroups": []
+    },
+    {
+      "group": "Burak Eser",
+      "subgroups": []
+    },
+    {
+      "group": "Kerem Taha Solmaz",
+      "subgroups": []
+    },
+    {
+      "group": "Mehmet Antep",
       "subgroups": []
     }
   ],

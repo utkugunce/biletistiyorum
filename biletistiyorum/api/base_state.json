@@ -18,9 +18,9 @@
       }
     ],
     "total_tickets": 130,
-    "assigned_tickets": 24,
+    "assigned_tickets": 0,
     "diger_tickets": 0,
-    "unassigned_tickets": 106,
+    "unassigned_tickets": 130,
     "arena_zones": {
       "north_upper": [
         "213",
@@ -8558,10 +8558,10 @@
         ],
         "total_pdfs": 24,
         "total_active": 24,
-        "assigned_count": 24,
+        "assigned_count": 0,
         "diger_count": 0,
-        "unassigned_count": 0,
-        "available_count": 0,
+        "unassigned_count": 24,
+        "available_count": 24,
         "missing_count": 0,
         "tickets": {
           "1-27": {
@@ -8572,12 +8572,12 @@
             "seat": 27,
             "filename": "Saha İci A27.pdf",
             "rel_path": "SAHA İÇİ/Saha İci A27.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "1-28": {
             "key": "SAHA:1-28",
@@ -8587,12 +8587,12 @@
             "seat": 28,
             "filename": "Saha İci A28.pdf",
             "rel_path": "SAHA İÇİ/Saha İci A28.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "1-29": {
             "key": "SAHA:1-29",
@@ -8602,12 +8602,12 @@
             "seat": 29,
             "filename": "Saha İci A29.pdf",
             "rel_path": "SAHA İÇİ/Saha İci A29.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "1-30": {
             "key": "SAHA:1-30",
@@ -8617,12 +8617,12 @@
             "seat": 30,
             "filename": "Saha İci A30.pdf",
             "rel_path": "SAHA İÇİ/Saha İci A30.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "1-31": {
             "key": "SAHA:1-31",
@@ -8632,12 +8632,12 @@
             "seat": 31,
             "filename": "Saha İci A31.pdf",
             "rel_path": "SAHA İÇİ/Saha İci A31.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "2-27": {
             "key": "SAHA:2-27",
@@ -8647,12 +8647,12 @@
             "seat": 27,
             "filename": "Saha İci B27.pdf",
             "rel_path": "SAHA İÇİ/Saha İci B27.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "2-28": {
             "key": "SAHA:2-28",
@@ -8662,12 +8662,12 @@
             "seat": 28,
             "filename": "Saha İci B28.pdf",
             "rel_path": "SAHA İÇİ/Saha İci B28.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "2-29": {
             "key": "SAHA:2-29",
@@ -8677,12 +8677,12 @@
             "seat": 29,
             "filename": "Saha İci B29.pdf",
             "rel_path": "SAHA İÇİ/Saha İci B29.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "2-30": {
             "key": "SAHA:2-30",
@@ -8692,12 +8692,12 @@
             "seat": 30,
             "filename": "Saha İci B30.pdf",
             "rel_path": "SAHA İÇİ/Saha İci B30.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "2-31": {
             "key": "SAHA:2-31",
@@ -8707,12 +8707,12 @@
             "seat": 31,
             "filename": "Saha İci B31.pdf",
             "rel_path": "SAHA İÇİ/Saha İci B31.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "2-39": {
             "key": "SAHA:2-39",
@@ -8722,12 +8722,12 @@
             "seat": 39,
             "filename": "Saha İci B39.pdf",
             "rel_path": "SAHA İÇİ/Saha İci B39.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "2-40": {
             "key": "SAHA:2-40",
@@ -8737,12 +8737,12 @@
             "seat": 40,
             "filename": "Saha İci B40.pdf",
             "rel_path": "SAHA İÇİ/Saha İci B40.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "2-41": {
             "key": "SAHA:2-41",
@@ -8752,12 +8752,12 @@
             "seat": 41,
             "filename": "Saha İci B41.pdf",
             "rel_path": "SAHA İÇİ/Saha İci B41.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "2-42": {
             "key": "SAHA:2-42",
@@ -8767,12 +8767,12 @@
             "seat": 42,
             "filename": "Saha İci B42.pdf",
             "rel_path": "SAHA İÇİ/Saha İci B42.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "2-43": {
             "key": "SAHA:2-43",
@@ -8782,12 +8782,12 @@
             "seat": 43,
             "filename": "Saha İci B43.pdf",
             "rel_path": "SAHA İÇİ/Saha İci B43.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "2-44": {
             "key": "SAHA:2-44",
@@ -8797,12 +8797,12 @@
             "seat": 44,
             "filename": "Saha İci B44.pdf",
             "rel_path": "SAHA İÇİ/Saha İci B44.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "2-45": {
             "key": "SAHA:2-45",
@@ -8812,12 +8812,12 @@
             "seat": 45,
             "filename": "Saha İci B45.pdf",
             "rel_path": "SAHA İÇİ/Saha İci B45.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "2-46": {
             "key": "SAHA:2-46",
@@ -8827,12 +8827,12 @@
             "seat": 46,
             "filename": "Saha İci B46.pdf",
             "rel_path": "SAHA İÇİ/Saha İci B46.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "2-47": {
             "key": "SAHA:2-47",
@@ -8842,12 +8842,12 @@
             "seat": 47,
             "filename": "Saha İci B47.pdf",
             "rel_path": "SAHA İÇİ/Saha İci B47.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "2-48": {
             "key": "SAHA:2-48",
@@ -8857,12 +8857,12 @@
             "seat": 48,
             "filename": "Saha İci B48.pdf",
             "rel_path": "SAHA İÇİ/Saha İci B48.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "2-49": {
             "key": "SAHA:2-49",
@@ -8872,12 +8872,12 @@
             "seat": 49,
             "filename": "Saha İci B49.pdf",
             "rel_path": "SAHA İÇİ/Saha İci B49.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "2-50": {
             "key": "SAHA:2-50",
@@ -8887,12 +8887,12 @@
             "seat": 50,
             "filename": "Saha İci B50.pdf",
             "rel_path": "SAHA İÇİ/Saha İci B50.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "2-51": {
             "key": "SAHA:2-51",
@@ -8902,12 +8902,12 @@
             "seat": 51,
             "filename": "Saha İci B51.pdf",
             "rel_path": "SAHA İÇİ/Saha İci B51.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           },
           "2-52": {
             "key": "SAHA:2-52",
@@ -8917,12 +8917,12 @@
             "seat": 52,
             "filename": "Saha İci B52.pdf",
             "rel_path": "SAHA İÇİ/Saha İci B52.pdf",
-            "group": "SAHA İÇİ",
+            "group": "",
             "subgroup": "",
-            "label": "SAHA İÇİ",
-            "status": "assigned",
+            "label": "",
+            "status": "unassigned",
             "has_pdf": true,
-            "color": "#0284C7"
+            "color": "#D97706"
           }
         },
         "has_image": false
@@ -8930,171 +8930,15 @@
     },
     "groups_summary": [
       {
-        "group": "SAHA İÇİ",
-        "display_name": "SAHA İÇİ",
-        "is_unassigned": false,
-        "is_diger": false,
-        "color": "#0284C7",
-        "total_count": 24,
-        "blocks": [
-          "SAHA"
-        ],
-        "ranges": [
-          {
-            "block": "SAHA",
-            "row": 1,
-            "count": 5,
-            "text": "1-27..1-31",
-            "seats": [
-              "1-27",
-              "1-28",
-              "1-29",
-              "1-30",
-              "1-31"
-            ]
-          },
-          {
-            "block": "SAHA",
-            "row": 2,
-            "count": 19,
-            "text": "2-27..2-31, 2-39..2-52",
-            "seats": [
-              "2-27",
-              "2-28",
-              "2-29",
-              "2-30",
-              "2-31",
-              "2-39",
-              "2-40",
-              "2-41",
-              "2-42",
-              "2-43",
-              "2-44",
-              "2-45",
-              "2-46",
-              "2-47",
-              "2-48",
-              "2-49",
-              "2-50",
-              "2-51",
-              "2-52"
-            ]
-          }
-        ],
-        "subgroups": [
-          {
-            "subgroup": "",
-            "display": "SAHA İÇİ",
-            "count": 24,
-            "ranges": [
-              {
-                "block": "SAHA",
-                "row": 1,
-                "count": 5,
-                "text": "1-27..1-31",
-                "seats": [
-                  "1-27",
-                  "1-28",
-                  "1-29",
-                  "1-30",
-                  "1-31"
-                ]
-              },
-              {
-                "block": "SAHA",
-                "row": 2,
-                "count": 19,
-                "text": "2-27..2-31, 2-39..2-52",
-                "seats": [
-                  "2-27",
-                  "2-28",
-                  "2-29",
-                  "2-30",
-                  "2-31",
-                  "2-39",
-                  "2-40",
-                  "2-41",
-                  "2-42",
-                  "2-43",
-                  "2-44",
-                  "2-45",
-                  "2-46",
-                  "2-47",
-                  "2-48",
-                  "2-49",
-                  "2-50",
-                  "2-51",
-                  "2-52"
-                ]
-              }
-            ],
-            "blocks": [
-              "SAHA"
-            ],
-            "seat_keys": [
-              "SAHA:1-27",
-              "SAHA:1-28",
-              "SAHA:1-29",
-              "SAHA:1-30",
-              "SAHA:1-31",
-              "SAHA:2-27",
-              "SAHA:2-28",
-              "SAHA:2-29",
-              "SAHA:2-30",
-              "SAHA:2-31",
-              "SAHA:2-39",
-              "SAHA:2-40",
-              "SAHA:2-41",
-              "SAHA:2-42",
-              "SAHA:2-43",
-              "SAHA:2-44",
-              "SAHA:2-45",
-              "SAHA:2-46",
-              "SAHA:2-47",
-              "SAHA:2-48",
-              "SAHA:2-49",
-              "SAHA:2-50",
-              "SAHA:2-51",
-              "SAHA:2-52"
-            ]
-          }
-        ],
-        "seat_keys": [
-          "SAHA:1-27",
-          "SAHA:1-28",
-          "SAHA:1-29",
-          "SAHA:1-30",
-          "SAHA:1-31",
-          "SAHA:2-27",
-          "SAHA:2-28",
-          "SAHA:2-29",
-          "SAHA:2-30",
-          "SAHA:2-31",
-          "SAHA:2-39",
-          "SAHA:2-40",
-          "SAHA:2-41",
-          "SAHA:2-42",
-          "SAHA:2-43",
-          "SAHA:2-44",
-          "SAHA:2-45",
-          "SAHA:2-46",
-          "SAHA:2-47",
-          "SAHA:2-48",
-          "SAHA:2-49",
-          "SAHA:2-50",
-          "SAHA:2-51",
-          "SAHA:2-52"
-        ]
-      },
-      {
         "group": "",
         "display_name": "Dağıtılmamış (Ana Klasör)",
         "is_unassigned": true,
         "is_diger": false,
         "color": "#D97706",
-        "total_count": 106,
+        "total_count": 130,
         "blocks": [
-          "102"
+          "102",
+          "SAHA"
         ],
         "ranges": [
           {
@@ -9258,13 +9102,53 @@
               "9-15",
               "9-16"
             ]
+          },
+          {
+            "block": "SAHA",
+            "row": 1,
+            "count": 5,
+            "text": "1-27..1-31",
+            "seats": [
+              "1-27",
+              "1-28",
+              "1-29",
+              "1-30",
+              "1-31"
+            ]
+          },
+          {
+            "block": "SAHA",
+            "row": 2,
+            "count": 19,
+            "text": "2-27..2-31, 2-39..2-52",
+            "seats": [
+              "2-27",
+              "2-28",
+              "2-29",
+              "2-30",
+              "2-31",
+              "2-39",
+              "2-40",
+              "2-41",
+              "2-42",
+              "2-43",
+              "2-44",
+              "2-45",
+              "2-46",
+              "2-47",
+              "2-48",
+              "2-49",
+              "2-50",
+              "2-51",
+              "2-52"
+            ]
           }
         ],
         "subgroups": [
           {
             "subgroup": "",
             "display": "Dağıtılmamış (Ana Klasör)",
-            "count": 106,
+            "count": 130,
             "ranges": [
               {
                 "block": "102",
@@ -9427,10 +9311,51 @@
                   "9-15",
                   "9-16"
                 ]
+              },
+              {
+                "block": "SAHA",
+                "row": 1,
+                "count": 5,
+                "text": "1-27..1-31",
+                "seats": [
+                  "1-27",
+                  "1-28",
+                  "1-29",
+                  "1-30",
+                  "1-31"
+                ]
+              },
+              {
+                "block": "SAHA",
+                "row": 2,
+                "count": 19,
+                "text": "2-27..2-31, 2-39..2-52",
+                "seats": [
+                  "2-27",
+                  "2-28",
+                  "2-29",
+                  "2-30",
+                  "2-31",
+                  "2-39",
+                  "2-40",
+                  "2-41",
+                  "2-42",
+                  "2-43",
+                  "2-44",
+                  "2-45",
+                  "2-46",
+                  "2-47",
+                  "2-48",
+                  "2-49",
+                  "2-50",
+                  "2-51",
+                  "2-52"
+                ]
               }
             ],
             "blocks": [
-              "102"
+              "102",
+              "SAHA"
             ],
             "seat_keys": [
               "102:3-1",
@@ -9538,7 +9463,31 @@
               "102:9-13",
               "102:9-14",
               "102:9-15",
-              "102:9-16"
+              "102:9-16",
+              "SAHA:1-27",
+              "SAHA:1-28",
+              "SAHA:1-29",
+              "SAHA:1-30",
+              "SAHA:1-31",
+              "SAHA:2-27",
+              "SAHA:2-28",
+              "SAHA:2-29",
+              "SAHA:2-30",
+              "SAHA:2-31",
+              "SAHA:2-39",
+              "SAHA:2-40",
+              "SAHA:2-41",
+              "SAHA:2-42",
+              "SAHA:2-43",
+              "SAHA:2-44",
+              "SAHA:2-45",
+              "SAHA:2-46",
+              "SAHA:2-47",
+              "SAHA:2-48",
+              "SAHA:2-49",
+              "SAHA:2-50",
+              "SAHA:2-51",
+              "SAHA:2-52"
             ]
           }
         ],
@@ -9648,89 +9597,111 @@
           "102:9-13",
           "102:9-14",
           "102:9-15",
-          "102:9-16"
+          "102:9-16",
+          "SAHA:1-27",
+          "SAHA:1-28",
+          "SAHA:1-29",
+          "SAHA:1-30",
+          "SAHA:1-31",
+          "SAHA:2-27",
+          "SAHA:2-28",
+          "SAHA:2-29",
+          "SAHA:2-30",
+          "SAHA:2-31",
+          "SAHA:2-39",
+          "SAHA:2-40",
+          "SAHA:2-41",
+          "SAHA:2-42",
+          "SAHA:2-43",
+          "SAHA:2-44",
+          "SAHA:2-45",
+          "SAHA:2-46",
+          "SAHA:2-47",
+          "SAHA:2-48",
+          "SAHA:2-49",
+          "SAHA:2-50",
+          "SAHA:2-51",
+          "SAHA:2-52"
         ]
       }
     ],
     "saved_groups": [
       {
-        "group": "rakip kulüp",
+        "group": "Eşref Arıcan",
         "subgroups": []
       },
       {
-        "group": "seda",
-        "subgroups": [
-          "fatma",
-          "seda",
-          "dicle"
-        ]
-      },
-      {
-        "group": "eşref",
-        "subgroups": [
-          "spor şube",
-          "eşref1",
-          "eşref2"
-        ]
-      },
-      {
-        "group": "utku",
-        "subgroups": [
-          "gözde",
-          "metubiz",
-          "redbull"
-        ]
-      },
-      {
-        "group": "neslihan",
+        "group": "Ayşe Fidan",
         "subgroups": []
       },
       {
-        "group": "ASC",
+        "group": "Neslihan Erşahin",
         "subgroups": []
       },
       {
-        "group": "berk çanakcı",
+        "group": "Ömer Özdemir",
         "subgroups": []
       },
       {
-        "group": "burak eser",
+        "group": "Tansu Ünal",
         "subgroups": []
       },
       {
-        "group": "MYZ",
+        "group": "Aysu Balcı",
         "subgroups": []
       },
       {
-        "group": "çağlar",
-        "subgroups": [
-          "sırtlı"
-        ]
-      },
-      {
-        "group": "diğer",
+        "group": "Çağlar Oskay",
         "subgroups": []
       },
       {
-        "group": "SAHA İÇİ",
+        "group": "Ahmet Salih Canbaz",
+        "subgroups": []
+      },
+      {
+        "group": "Seda Canlı",
+        "subgroups": []
+      },
+      {
+        "group": "Burak Eser",
+        "subgroups": []
+      },
+      {
+        "group": "Kerem Taha Solmaz",
+        "subgroups": []
+      },
+      {
+        "group": "Mehmet Antep",
         "subgroups": []
       }
     ],
     "group_colors": {
-      "fenerbahçe": "#1D4ED8",
-      "seda": "#9333EA",
-      "eşref": "#059669",
-      "utku": "#EA580C",
-      "neslihan": "#DB2777",
-      "ASC": "#0891B2",
-      "berk çanakcı": "#4F46E5",
-      "burak eser": "#0D9488",
-      "MYZ": "#7C3AED",
-      "çağlar": "#E11D48",
+      "eşref arıcan": "#059669",
+      "Eşref Arıcan": "#059669",
+      "ayşe fidan": "#E11D48",
+      "Ayşe Fidan": "#E11D48",
+      "neslihan erşahin": "#DB2777",
+      "Neslihan Erşahin": "#DB2777",
+      "ömer özdemir": "#2563EB",
+      "Ömer Özdemir": "#2563EB",
+      "tansu ünal": "#D97706",
+      "Tansu Ünal": "#D97706",
+      "aysu balcı": "#0D9488",
+      "Aysu Balcı": "#0D9488",
+      "çağlar oskay": "#4F46E5",
+      "Çağlar Oskay": "#4F46E5",
+      "ahmet salih canbaz": "#0891B2",
+      "Ahmet Salih Canbaz": "#0891B2",
+      "seda canlı": "#9333EA",
+      "Seda Canlı": "#9333EA",
+      "burak eser": "#65A30D",
+      "Burak Eser": "#65A30D",
+      "kerem taha solmaz": "#7C3AED",
+      "Kerem Taha Solmaz": "#7C3AED",
+      "mehmet antep": "#EA580C",
+      "Mehmet Antep": "#EA580C",
       "diğer": "#F59E0B",
-      "rakip kulüp": "#2563EB",
-      "Utku Gunce": "#D97706",
-      "Çağlar Oskay": "#65A30D",
+      "diger": "#F59E0B",
       "SAHA İÇİ": "#0284C7"
     },
     "can_undo": false,

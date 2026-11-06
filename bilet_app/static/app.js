@@ -269,7 +269,7 @@ function renderQuickGroupChips() {
   saved.forEach((gItem) => {
     const gName = gItem.group;
     if (gName.toLowerCase() === "diğer" || gName.toLowerCase() === "diger") return;
-    const c = colors[gName] || "#8b5cf6";
+    const c = colors[gName] || colors[gName.toLowerCase()] || "#8b5cf6";
     if (gItem.subgroups && gItem.subgroups.length > 0) {
       gItem.subgroups.forEach((sg) => {
         chips.push({ group: gName, subgroup: sg, label: `${gName}/${sg}`, color: c });
@@ -279,11 +279,11 @@ function renderQuickGroupChips() {
     }
   });
 
-  chips.slice(0, 6).forEach((ch) => {
+  chips.forEach((ch) => {
     const btn = document.createElement("button");
     btn.className = "group-chip";
     btn.innerHTML = `<span class="chip-dot" style="background:${ch.color};"></span><span>${ch.label}</span>`;
-    btn.title = `Seçili koltukları '${ch.label}' grubuna ata`;
+    btn.title = `Seçili koltukları '${ch.label}' kişisine ata`;
     btn.addEventListener("click", () => {
       assignSelectedSeats(ch.group, ch.subgroup);
     });

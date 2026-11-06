@@ -162,10 +162,8 @@ class StateManager:
                     # Eski şablonda "fenerbahçe" kalıcı şablon olarak kaldıysa temizle (maç klasöründen dinamik gelir)
                     saved = data.get("saved_groups", [])
                     data["saved_groups"] = [
-                        g for g in saved if g.get("group", "").lower() != "fenerbahçe"
+                        g for g in saved if g.get("group", "").lower() not in ("fenerbahçe", "rakip kulüp")
                     ]
-                    if not any(g.get("group", "").lower() == "rakip kulüp" for g in data["saved_groups"]):
-                        data["saved_groups"].insert(0, {"group": "rakip kulüp", "subgroups": []})
                     if "admin_password" not in data:
                         data["admin_password"] = os.environ.get("ZEREN_ADMIN_PASSWORD", "zeren2026")
                     if "admin_tokens" not in data:
@@ -405,10 +403,12 @@ state_mgr = StateManager()
 
 def _is_raw_block_folder(folder_name: str) -> bool:
     """Klasör adı '121 BLOK', '102' veya 'SAHA İÇİ' gibi salt blok klasörü mü kontrol eder."""
-    fn = folder_name.strip().lower()
-    if fn in ("saha", "saha içi", "saha ici", "saha_ici"):
+    t = folder_name.lower().strip()
+    tr_map = str.maketrans("çğıöşüiı", "cgiosuii")
+    norm = t.translate(tr_map).replace("̇", "")
+    if "saha" in norm:
         return True
-    return bool(re.match(r"^\d{3}(\s*BLOK)?$", folder_name.strip(), re.IGNORECASE))
+    return bool(re.match(r"^\d{3}(\s*blok)?$", norm))
 
 
 def scan_match_folder(folder: Path) -> Dict[str, Any]:
