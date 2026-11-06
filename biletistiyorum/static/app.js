@@ -2517,13 +2517,28 @@ function handleQuickSendWhatsAppForRequest(req) {
   }
 }
 
-function triggerDownload(url, filename) {
-  const a = document.createElement("a");
-  a.href = url;
-  if (filename) a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+async function triggerDownload(url, filename) {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const blob = await res.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    if (filename) a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => window.URL.revokeObjectURL(blobUrl), 10000);
+  } catch (e) {
+    console.warn('Fetch download failed, falling back to direct anchor:', e);
+    const a = document.createElement("a");
+    a.href = url;
+    if (filename) a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
 }
 
 // PWA Service Worker Registration

@@ -12,6 +12,8 @@ const PALETTE = [
   "#0891B2", "#4F46E5", "#BE185D", "#65A30D", "#9333EA"
 ];
 
+const TICKET_FILES = {"102:3-1": "102 3 - -1.pdf", "102:3-10": "102 3 - -10.pdf", "102:3-11": "102 3 - -11.pdf", "102:3-12": "102 3 - -12.pdf", "102:3-13": "102 3 - -13.pdf", "102:3-14": "102 3 - -14.pdf", "102:3-15": "102 3 - -15.pdf", "102:3-2": "102 3 - -2.pdf", "102:3-3": "102 3 - -3.pdf", "102:3-4": "102 3 - -4.pdf", "102:3-5": "102 3 - -5.pdf", "102:3-6": "102 3 - -6.pdf", "102:3-7": "102 3 - -7.pdf", "102:3-8": "102 3 - -8.pdf", "102:3-9": "102 3 - -9.pdf", "102:4-1": "102 4 - -1.pdf", "102:4-10": "102 4 - -10.pdf", "102:4-11": "102 4 - -11.pdf", "102:4-12": "102 4 - -12.pdf", "102:4-13": "102 4 - -13.pdf", "102:4-14": "102 4 - -14.pdf", "102:4-15": "102 4 - -15.pdf", "102:4-2": "102 4 - -2.pdf", "102:4-3": "102 4 - -3.pdf", "102:4-4": "102 4 - -4.pdf", "102:4-5": "102 4 - -5.pdf", "102:4-6": "102 4 - -6.pdf", "102:4-7": "102 4 - -7.pdf", "102:4-8": "102 4 - -8.pdf", "102:4-9": "102 4 - -9.pdf", "102:5-1": "102 5 - -1.pdf", "102:5-10": "102 5 - -10.pdf", "102:5-11": "102 5 - -11.pdf", "102:5-12": "102 5 - -12.pdf", "102:5-13": "102 5 - -13.pdf", "102:5-14": "102 5 - -14.pdf", "102:5-15": "102 5 - -15.pdf", "102:5-2": "102 5 - -2.pdf", "102:5-3": "102 5 - -3.pdf", "102:5-4": "102 5 - -4.pdf", "102:5-5": "102 5 - -5.pdf", "102:5-6": "102 5 - -6.pdf", "102:5-7": "102 5 - -7.pdf", "102:5-8": "102 5 - -8.pdf", "102:5-9": "102 5 - -9.pdf", "102:6-1": "102 6 - -1.pdf", "102:6-10": "102 6 - -10.pdf", "102:6-11": "102 6 - -11.pdf", "102:6-12": "102 6 - -12.pdf", "102:6-13": "102 6 - -13.pdf", "102:6-14": "102 6 - -14.pdf", "102:6-15": "102 6 - -15.pdf", "102:6-2": "102 6 - -2.pdf", "102:6-3": "102 6 - -3.pdf", "102:6-4": "102 6 - -4.pdf", "102:6-5": "102 6 - -5.pdf", "102:6-6": "102 6 - -6.pdf", "102:6-7": "102 6 - -7.pdf", "102:6-8": "102 6 - -8.pdf", "102:6-9": "102 6 - -9.pdf", "102:7-1": "102 7 - -1.pdf", "102:7-10": "102 7 - -10.pdf", "102:7-11": "102 7 - -11.pdf", "102:7-12": "102 7 - -12.pdf", "102:7-13": "102 7 - -13.pdf", "102:7-14": "102 7 - -14.pdf", "102:7-15": "102 7 - -15.pdf", "102:7-2": "102 7 - -2.pdf", "102:7-3": "102 7 - -3.pdf", "102:7-4": "102 7 - -4.pdf", "102:7-5": "102 7 - -5.pdf", "102:7-6": "102 7 - -6.pdf", "102:7-7": "102 7 - -7.pdf", "102:7-8": "102 7 - -8.pdf", "102:7-9": "102 7 - -9.pdf", "102:8-1": "102 8 - -1.pdf", "102:8-10": "102 8 - -10.pdf", "102:8-11": "102 8 - -11.pdf", "102:8-12": "102 8 - -12.pdf", "102:8-13": "102 8 - -13.pdf", "102:8-14": "102 8 - -14.pdf", "102:8-15": "102 8 - -15.pdf", "102:8-2": "102 8 - -2.pdf", "102:8-3": "102 8 - -3.pdf", "102:8-4": "102 8 - -4.pdf", "102:8-5": "102 8 - -5.pdf", "102:8-6": "102 8 - -6.pdf", "102:8-7": "102 8 - -7.pdf", "102:8-8": "102 8 - -8.pdf", "102:8-9": "102 8 - -9.pdf", "102:9-1": "102 9 - -1.pdf", "102:9-10": "102 9 - -10.pdf", "102:9-11": "102 9 - -11.pdf", "102:9-12": "102 9 - -12.pdf", "102:9-13": "102 9 - -13.pdf", "102:9-14": "102 9 - -14.pdf", "102:9-15": "102 9 - -15.pdf", "102:9-16": "102 9 - -16.pdf", "102:9-2": "102 9 - -2.pdf", "102:9-3": "102 9 - -3.pdf", "102:9-4": "102 9 - -4.pdf", "102:9-5": "102 9 - -5.pdf", "102:9-6": "102 9 - -6.pdf", "102:9-7": "102 9 - -7.pdf", "102:9-8": "102 9 - -8.pdf", "102:9-9": "102 9 - -9.pdf", "SAHA:1-27": "Saha İci A27.pdf", "SAHA:1-28": "Saha İci A28.pdf", "SAHA:1-29": "Saha İci A29.pdf", "SAHA:1-30": "Saha İci A30.pdf", "SAHA:1-31": "Saha İci A31.pdf", "SAHA:2-27": "Saha İci B27.pdf", "SAHA:2-28": "Saha İci B28.pdf", "SAHA:2-29": "Saha İci B29.pdf", "SAHA:2-30": "Saha İci B30.pdf", "SAHA:2-31": "Saha İci B31.pdf", "SAHA:2-39": "Saha İci B39.pdf", "SAHA:2-40": "Saha İci B40.pdf", "SAHA:2-41": "Saha İci B41.pdf", "SAHA:2-42": "Saha İci B42.pdf", "SAHA:2-43": "Saha İci B43.pdf", "SAHA:2-44": "Saha İci B44.pdf", "SAHA:2-45": "Saha İci B45.pdf", "SAHA:2-46": "Saha İci B46.pdf", "SAHA:2-47": "Saha İci B47.pdf", "SAHA:2-48": "Saha İci B48.pdf", "SAHA:2-49": "Saha İci B49.pdf", "SAHA:2-50": "Saha İci B50.pdf", "SAHA:2-51": "Saha İci B51.pdf", "SAHA:2-52": "Saha İci B52.pdf"};
+
 let cachedBase = null;
 function getBaseData() {
   if (!cachedBase) {
@@ -707,8 +709,8 @@ export default async function handler(req, res) {
           seat: sid,
           label: `${bLabel} · S.${rLabel} K.${s}`,
           filename: `ZEREN_SPOR_${isSaha ? "SahaIci" : bId + "Blok"}_Sira${rLabel}_Koltuk${s}.pdf`,
-          download_url: `/api/tickets/download-single?block=${bId}&seat=${sid}`,
-          has_pdf: false
+          download_url: `/tickets/${encodeURIComponent(TICKET_FILES[`${bId}:${sid}`] || `${bId}_${sid}.pdf`)}`,
+          has_pdf: Boolean(TICKET_FILES[`${bId}:${sid}`])
         };
       });
 
@@ -744,6 +746,17 @@ export default async function handler(req, res) {
       pending_count: recipients.length - sentCount,
       recipients
     });
+  }
+
+  // 9.5 GET /api/tickets/download-single
+  if (pathname === "/api/tickets/download-single" && req.method === "GET") {
+    const block = (urlObj.searchParams.get("block") || "").trim();
+    const seat = (urlObj.searchParams.get("seat") || "").trim();
+    const fname = TICKET_FILES[`${block}:${seat}`];
+    if (fname) {
+      return res.redirect(302, `/tickets/${encodeURIComponent(fname)}`);
+    }
+    return res.status(404).json({ error: "Bilet bulunamadı." });
   }
 
   // 10. POST /api/dispatch/mark-sent
