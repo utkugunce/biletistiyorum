@@ -2645,6 +2645,20 @@ def serve_index():
     return FileResponse(str(STATIC_DIR / "index.html"))
 
 
+def _auto_folder_sync_loop():
+    """Bulutta atanan biletleri her 5 sn'de yerel kisi klasorlerine ayirir."""
+    import time
+    from sync_helper import sync_cloud_assignments_to_folders
+    while True:
+        try:
+            sync_cloud_assignments_to_folders(state_mgr.active_folder)
+        except Exception as e:
+            print("auto sync error:", e)
+        time.sleep(5)
+
+
 if __name__ == "__main__":
+    import threading
     import uvicorn
+    threading.Thread(target=_auto_folder_sync_loop, daemon=True).start()
     uvicorn.run(app, host="0.0.0.0", port=8765)
