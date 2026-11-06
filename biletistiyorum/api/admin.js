@@ -150,16 +150,21 @@ function buildFullState(baseState, sysState) {
     return colorMap[key];
   }
 
-  let totalAssigned = 0;
-  let totalTickets = 0;
-
-  // Clear any old virtual assignments from base template
+  // Reset assignment fields on all blocks
   for (const [bId, bObj] of Object.entries(st.blocks || {})) {
-    bObj.tickets = {};
     bObj.assigned_tickets = 0;
+    bObj.unassigned_tickets = 0;
     bObj.total_tickets = 0;
+    for (const t of Object.values(bObj.tickets || {})) {
+      t.status = "unassigned";
+      t.group = "";
+      t.subgroup = "";
+      t.label = "";
+      t.color = "";
+    }
   }
 
+  // Apply assignments from virtual_assignments
   for (const [key, val] of Object.entries(vMap)) {
     const [bId, sid] = key.split(":");
     if (!st.blocks[bId]) continue;
@@ -172,26 +177,58 @@ function buildFullState(baseState, sysState) {
     const label = sub ? `${grp}/${sub}` : grp;
     const col = getGroupColor(grp);
 
-    st.blocks[bId].tickets[sid] = {
-      key,
-      block: bId,
-      row,
-      seat,
-      seat_id: sid,
-      filename: `${bId}_${sid}.pdf`,
-      rel_path: "",
-      group: grp,
-      subgroup: sub,
-      label,
-      status: "assigned",
-      is_virtual: true,
-      has_pdf: false,
-      color: col
-    };
-    st.blocks[bId].assigned_tickets = (st.blocks[bId].assigned_tickets || 0) + 1;
-    st.blocks[bId].total_tickets = (st.blocks[bId].total_tickets || 0) + 1;
-    totalAssigned++;
-    totalTickets++;
+    st.blocks[bId].tickets = st.blocks[bId].tickets || {};
+    if (st.blocks[bId].tickets[sid]) {
+      const t = st.blocks[bId].tickets[sid];
+      t.group = grp;
+      t.subgroup = sub;
+      t.label = label;
+      t.status = "assigned";
+      t.color = col;
+    } else {
+      st.blocks[bId].tickets[sid] = {
+        key,
+        block: bId,
+        row,
+        seat,
+        seat_id: sid,
+        filename: `${bId}_${sid}.pdf`,
+        rel_path: "",
+        group: grp,
+        subgroup: sub,
+        label,
+        status: "assigned",
+        is_virtual: true,
+        has_pdf: false,
+        color: col
+      };
+    }
+  }
+
+  let totalAssigned = 0;
+  let totalUnassigned = 0;
+  let totalTickets = 0;
+
+  for (const [bId, bObj] of Object.entries(st.blocks || {})) {
+    const tickets = bObj.tickets || {};
+    let bAssigned = 0;
+    let bUnassigned = 0;
+    for (const t of Object.values(tickets)) {
+      if (t.status === "assigned") {
+        bAssigned++;
+      } else {
+        bUnassigned++;
+      }
+    }
+    bObj.assigned_tickets = bAssigned;
+    bObj.unassigned_tickets = bUnassigned;
+    bObj.total_tickets = Object.keys(tickets).length;
+    bObj.total_active = bObj.total_tickets;
+    bObj.total_pdfs = Object.values(tickets).filter((t) => t.has_pdf).length;
+
+    totalAssigned += bAssigned;
+    totalUnassigned += bUnassigned;
+    totalTickets += bObj.total_tickets;
   }
 
   // Build groups_summary
@@ -272,7 +309,7 @@ function buildFullState(baseState, sysState) {
 
   st.total_tickets = totalTickets;
   st.assigned_tickets = totalAssigned;
-  st.unassigned_tickets = 0;
+  st.unassigned_tickets = totalUnassigned;
   st.diger_tickets = 0;
   st.groups_summary = groupsSummary;
   st.colors = colorMap;
@@ -284,23 +321,40 @@ function autoPickSeats(blockObj, count) {
   const tickets = blockObj.tickets || {};
   const picked = [];
 
+  function isSeatFree(rNum, sNum) {
+    const sid = `${rNum}-${sNum}`;
+    const t = tickets[sid];
+    return !t || t.status === "unassigned" || t.status === "diger";
+  }
+
   // 1. Try finding consecutive seats in a single row
   for (const rObj of blockObj.rows) {
     const rNum = rObj.row;
-    const freeInRow = (rObj.seats || []).filter((sNum) => !tickets[`${rNum}-${sNum}`]);
-    if (freeInRow.length >= count) {
-      for (let i = 0; i < count; i++) {
-        picked.push({ block: blockObj.id, row: rNum, seat: freeInRow[i] });
+    const cells = (rObj.cells || rObj.seats || []).filter((c) => c !== null);
+    cells.sort((a, b) => a - b);
+    let consecutive = [];
+    for (const sNum of cells) {
+      if (isSeatFree(rNum, sNum)) {
+        if (consecutive.length > 0 && consecutive[consecutive.length - 1].seat !== sNum - 1) {
+          consecutive = [];
+        }
+        consecutive.push({ block: blockObj.id, row: rNum, seat: sNum });
+        if (consecutive.length === count) {
+          return consecutive;
+        }
+      } else {
+        consecutive = [];
       }
-      return picked;
     }
   }
 
   // 2. Otherwise pick across rows
   for (const rObj of blockObj.rows) {
     const rNum = rObj.row;
-    for (const sNum of rObj.seats || []) {
-      if (!tickets[`${rNum}-${sNum}`]) {
+    const cells = (rObj.cells || rObj.seats || []).filter((c) => c !== null);
+    cells.sort((a, b) => a - b);
+    for (const sNum of cells) {
+      if (isSeatFree(rNum, sNum)) {
         picked.push({ block: blockObj.id, row: rNum, seat: sNum });
         if (picked.length >= count) return picked;
       }
