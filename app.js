@@ -36,17 +36,73 @@ let excelSearchQuery = "";
 // BAŞLATMA VE DOĞRULAMA (YÖNETİCİ GİRİŞİ)
 // ---------------------------------------------------------
 let isAdminAuthenticated = false;
+let liveSyncTimer = null;
+
+// Global fetch sarmalayıcısı: localStorage'da kayıtlı admin token varsa otomatik header'a ekler
+// Böylece sayfa yenilense de cookie temizlense de oturum asla düşmez
+const originalFetch = window.fetch;
+window.fetch = function(url, options = {}) {
+  const token = localStorage.getItem("zeren_admin_token");
+  if (token && typeof url === "string" && (url.startsWith("/api/") || url.startsWith("api/"))) {
+    options = options || {};
+    options.headers = options.headers || {};
+    if (options.headers instanceof Headers) {
+      if (!options.headers.has("X-Admin-Token")) options.headers.set("X-Admin-Token", token);
+      if (!options.headers.has("Authorization")) options.headers.set("Authorization", "Bearer " + token);
+    } else if (Array.isArray(options.headers)) {
+      options.headers.push(["X-Admin-Token", token]);
+      options.headers.push(["Authorization", "Bearer " + token]);
+    } else {
+      if (!options.headers["X-Admin-Token"]) options.headers["X-Admin-Token"] = token;
+      if (!options.headers["Authorization"]) options.headers["Authorization"] = "Bearer " + token;
+    }
+  }
+  return originalFetch.call(this, url, options);
+};
 
 document.addEventListener("DOMContentLoaded", () => {
   bindUIEvents();
   bindAuthEvents();
   checkAuthAndInit();
+  initLiveSync();
 });
+
+function initLiveSync() {
+  if (liveSyncTimer) clearInterval(liveSyncTimer);
+  // Her 5 saniyede bir arka planda sessizce yeni talepleri ve dağıtım listesini güncelle
+  liveSyncTimer = setInterval(async () => {
+    if (isAdminAuthenticated && !document.hidden) {
+      try {
+        await fetchExcelSummary();
+        await updateDispatchBadge();
+      } catch (e) {}
+    }
+  }, 5000);
+
+  // Sekmeye geri dönüldüğünde anında yenile
+  document.addEventListener("visibilitychange", async () => {
+    if (!document.hidden && isAdminAuthenticated) {
+      try {
+        await fetchExcelSummary();
+        await updateDispatchBadge();
+      } catch (e) {}
+    }
+  });
+}
 
 async function checkAuthAndInit() {
   try {
-    const res = await fetch("/api/auth/check");
-    const data = await res.json();
+    const savedToken = localStorage.getItem("zeren_admin_token");
+    const headers = savedToken ? { "X-Admin-Token": savedToken, "Authorization": "Bearer " + savedToken } : {};
+    const res = await fetch("/api/auth/check", { headers });
+    const text = await res.text();
+    let data = {};
+    try {
+      data = JSON.parse(text);
+    } catch (parseErr) {
+      console.warn("Auth check non-JSON response:", text);
+    }
+
     if (data.authenticated) {
       isAdminAuthenticated = true;
       hideLoginOverlay();
@@ -1977,8 +2033,17 @@ async function handleAdminLogin() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ password: pwd }),
     });
-    const data = await res.json();
+    const text = await res.text();
+    let data = {};
+    try {
+      data = JSON.parse(text);
+    } catch (parseErr) {
+      throw new Error(text && text.length < 120 ? text : "Sunucudan geçersiz yanıt alındı.");
+    }
     if (res.ok && (data.success || data.authenticated)) {
+      if (data.token) {
+        localStorage.setItem("zeren_admin_token", data.token);
+      }
       isAdminAuthenticated = true;
       hideLoginOverlay();
       showToast("Yönetici girişi başarılı!");
@@ -2005,6 +2070,7 @@ async function handleAdminLogout() {
   try {
     await fetch("/api/auth/logout", { method: "POST" });
   } catch (e) {}
+  localStorage.removeItem("zeren_admin_token");
   isAdminAuthenticated = false;
   showLoginOverlay();
   showToast("Oturum güvenle kapatıldı.");
