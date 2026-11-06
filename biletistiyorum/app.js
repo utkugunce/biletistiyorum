@@ -269,7 +269,7 @@ function renderQuickGroupChips() {
   saved.forEach((gItem) => {
     const gName = gItem.group;
     if (gName.toLowerCase() === "diğer" || gName.toLowerCase() === "diger") return;
-    const c = colors[gName] || "#7E22CE";
+    const c = colors[gName] || "#8b5cf6";
     if (gItem.subgroups && gItem.subgroups.length > 0) {
       gItem.subgroups.forEach((sg) => {
         chips.push({ group: gName, subgroup: sg, label: `${gName}/${sg}`, color: c });
@@ -279,12 +279,11 @@ function renderQuickGroupChips() {
     }
   });
 
-  chips.forEach((ch) => {
+  chips.slice(0, 6).forEach((ch) => {
     const btn = document.createElement("button");
     btn.className = "group-chip";
-    btn.style.backgroundColor = ch.color;
-    btn.textContent = ch.label;
-    btn.title = `Seçili koltukları '${ch.label}' klasörüne ata`;
+    btn.innerHTML = `<span class="chip-dot" style="background:${ch.color};"></span><span>${ch.label}</span>`;
+    btn.title = `Seçili koltukları '${ch.label}' grubuna ata`;
     btn.addEventListener("click", () => {
       assignSelectedSeats(ch.group, ch.subgroup);
     });
@@ -576,6 +575,36 @@ function toggleEntireRow(rowNum, cells) {
   updateSelectionBar();
 }
 
+function formatSelectedSeatsPreview(seatsSet, blockId) {
+  if (!seatsSet || seatsSet.size === 0) return "";
+  const isSaha = String(blockId).toUpperCase() === "SAHA";
+  const rowsMap = {};
+  seatsSet.forEach((sid) => {
+    const [rStr, sStr] = sid.split("-");
+    const r = parseInt(rStr, 10);
+    const s = parseInt(sStr, 10);
+    if (!rowsMap[r]) rowsMap[r] = [];
+    rowsMap[r].push(s);
+  });
+
+  const parts = [];
+  Object.keys(rowsMap).map(Number).sort((a, b) => a - b).forEach((r) => {
+    const sList = rowsMap[r].sort((a, b) => a - b);
+    let rName = `Sıra ${r}`;
+    if (isSaha) {
+      rName = r === 1 ? "Sıra A" : r === 2 ? "Sıra B" : `Sıra ${r}`;
+    }
+    if (sList.length === 1) {
+      parts.push(`${rName} · K.${sList[0]}`);
+    } else {
+      parts.push(`${rName} (K.${sList.join(", ")})`);
+    }
+  });
+
+  const bPrefix = isSaha ? "Saha İçi · " : "";
+  return bPrefix + parts.join("  |  ");
+}
+
 function updateSelectionBar() {
   const idleEl = document.getElementById("dockIdleState");
   const activeEl = document.getElementById("selectionActionBar");
@@ -589,14 +618,20 @@ function updateSelectionBar() {
 
   idleEl.classList.add("hidden");
   activeEl.classList.remove("hidden");
-  document.getElementById("selCountBadge").textContent = `${count} Koltuk`;
 
-  const sorted = Array.from(selectedSeats).sort((a, b) => {
-    const [r1, s1] = a.split("-").map(Number);
-    const [r2, s2] = b.split("-").map(Number);
-    return r1 !== r2 ? r1 - r2 : s1 - s2;
-  });
-  document.getElementById("selSeatsPreview").textContent = sorted.join(", ");
+  const countTextEl = document.getElementById("selCountText");
+  if (countTextEl) {
+    countTextEl.textContent = `${count} Koltuk`;
+  } else {
+    document.getElementById("selCountBadge").textContent = `${count} Koltuk`;
+  }
+
+  const previewText = formatSelectedSeatsPreview(selectedSeats, currentBlockId);
+  const prevEl = document.getElementById("selSeatsPreview");
+  if (prevEl) {
+    prevEl.textContent = previewText;
+    prevEl.title = previewText;
+  }
 }
 
 function setInteractionMode(mode) {

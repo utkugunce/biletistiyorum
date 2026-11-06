@@ -284,35 +284,60 @@
         <!-- Durum 2: Koltuk seçildiğinde çalışan atama barı -->
         <div class="dock-action-row hidden" id="selectionActionBar">
           <div class="dock-selection-summary">
-            <span class="dock-sel-badge" id="selCountBadge">0 Koltuk</span>
-            <span class="dock-sel-seats" id="selSeatsPreview"></span>
-            <button class="btn-link-light" id="btnClearSelection" title="Seçimi İptal Et (Esc)">Temizle</button>
+            <span class="dock-sel-badge" id="selCountBadge">
+              <i class="ph-bold ph-check-circle"></i>
+              <span id="selCountText">0 Koltuk</span>
+            </span>
+            <span class="dock-sel-seats" id="selSeatsPreview" title="Seçili koltuklar"></span>
+            <button class="dock-btn-clear" id="btnClearSelection" title="Seçimi İptal Et (Esc)">
+              <i class="ph-bold ph-x"></i>
+              <span>Temizle</span>
+            </button>
           </div>
+
+          <div class="dock-divider"></div>
 
           <div class="dock-chip-list" id="quickGroupChips"></div>
 
           <div class="dock-assign-form">
-            <input
-              type="text"
-              id="inputAssignGroup"
-              list="datalistGroups"
-              placeholder="Kişi / Grup..."
-              class="dock-input-field"
-            />
+            <div class="dock-input-group">
+              <i class="ph-bold ph-user dock-input-icon"></i>
+              <input
+                type="text"
+                id="inputAssignGroup"
+                list="datalistGroups"
+                placeholder="Kişi / Grup..."
+                class="dock-input-field"
+                autocomplete="off"
+              />
+            </div>
             <datalist id="datalistGroups"></datalist>
 
-            <input
-              type="text"
-              id="inputAssignSubgroup"
-              list="datalistSubgroups"
-              placeholder="Alt grup..."
-              class="dock-input-field dock-input-sub"
-            />
+            <div class="dock-input-group dock-input-group-sub">
+              <i class="ph-bold ph-tag dock-input-icon"></i>
+              <input
+                type="text"
+                id="inputAssignSubgroup"
+                list="datalistSubgroups"
+                placeholder="Alt grup / Not..."
+                class="dock-input-field dock-input-sub"
+                autocomplete="off"
+              />
+            </div>
             <datalist id="datalistSubgroups"></datalist>
 
-            <button class="btn btn-primary btn-sm" id="btnApplyAssign">Ata</button>
-            <button class="btn btn-warning btn-sm" id="btnMoveToDiger" title="Seçili biletleri 'diğer' klasörüne taşı">Diğer'e Koy</button>
-            <button class="btn btn-ghost-light btn-sm" id="btnMoveToRoot" title="Seçili biletleri ana klasöre (boşa) çıkar">Boşa Çıkar</button>
+            <button class="dock-action-btn btn-dock-primary" id="btnApplyAssign" title="Seçili koltukları bu kişiye ata">
+              <i class="ph-bold ph-check"></i>
+              <span>Ata</span>
+            </button>
+            <button class="dock-action-btn btn-dock-secondary" id="btnMoveToDiger" title="Seçili biletleri 'diğer' statüsüne taşı">
+              <i class="ph-bold ph-archive"></i>
+              <span>Diğer'e Koy</span>
+            </button>
+            <button class="dock-action-btn btn-dock-ghost" id="btnMoveToRoot" title="Seçili biletleri boşa çıkar">
+              <i class="ph-bold ph-arrows-counter-clockwise"></i>
+              <span>Boşa Çıkar</span>
+            </button>
           </div>
         </div>
       </footer>
