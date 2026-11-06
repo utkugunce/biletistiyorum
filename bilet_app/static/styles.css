@@ -963,6 +963,43 @@ body {
   flex-shrink: 0;
 }
 
+.dock-chips-wrapper {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  position: relative;
+}
+
+.dock-scroll-arrow {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #f3e8ff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.15s ease;
+  padding: 0;
+  outline: none;
+}
+.dock-scroll-arrow:hover {
+  background: rgba(255, 255, 255, 0.28);
+  border-color: rgba(255, 255, 255, 0.45);
+  color: #ffffff;
+  transform: scale(1.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+.dock-scroll-arrow:active {
+  transform: scale(0.95);
+}
+
 .dock-chip-list {
   flex: 1;
   min-width: 0;
@@ -970,14 +1007,31 @@ body {
   align-items: center;
   gap: 7px;
   overflow-x: auto;
-  padding: 4px 0;
-  scrollbar-width: none;
+  overflow-y: hidden;
+  padding: 4px 2px 6px 2px;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(192, 132, 252, 0.5) rgba(255, 255, 255, 0.08);
 }
 .dock-chip-list::-webkit-scrollbar {
-  display: none;
+  height: 4px;
+  display: block;
+}
+.dock-chip-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+}
+.dock-chip-list::-webkit-scrollbar-thumb {
+  background: rgba(192, 132, 252, 0.5);
+  border-radius: 4px;
+}
+.dock-chip-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(192, 132, 252, 0.85);
 }
 
 .group-chip {
+  flex-shrink: 0;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(8px);
@@ -993,6 +1047,7 @@ body {
   align-items: center;
   gap: 6px;
   transition: all 0.15s ease;
+  user-select: none;
 }
 .group-chip:hover {
   background: rgba(255, 255, 255, 0.18);
@@ -2723,6 +2778,10 @@ body {
   .dock-sel-seats {
     font-size: 10.5px;
     max-width: 160px;
+  }
+
+  .dock-chips-wrapper {
+    width: 100%;
   }
 
   .dock-chip-list {

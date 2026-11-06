@@ -281,7 +281,9 @@ function renderQuickGroupChips() {
 
   chips.forEach((ch) => {
     const btn = document.createElement("button");
+    btn.type = "button";
     btn.className = "group-chip";
+    btn.draggable = false;
     btn.innerHTML = `<span class="chip-dot" style="background:${ch.color};"></span><span>${ch.label}</span>`;
     btn.title = `Seçili koltukları '${ch.label}' kişisine ata`;
     btn.addEventListener("click", () => {
@@ -1795,6 +1797,75 @@ function bindUIEvents() {
       updateSelectionBar();
     }
   });
+
+  initChipListInteractions();
+}
+
+function initChipListInteractions() {
+  const container = document.getElementById("quickGroupChips");
+  const btnLeft = document.getElementById("btnScrollChipsLeft");
+  const btnRight = document.getElementById("btnScrollChipsRight");
+  if (!container) return;
+
+  // Ok butonları ile yumuşak kaydırma
+  if (btnLeft) {
+    btnLeft.addEventListener("click", (e) => {
+      e.preventDefault();
+      container.scrollBy({ left: -240, behavior: "smooth" });
+    });
+  }
+  if (btnRight) {
+    btnRight.addEventListener("click", (e) => {
+      e.preventDefault();
+      container.scrollBy({ left: 240, behavior: "smooth" });
+    });
+  }
+
+  // Mouse tekerleği: Dikey tekerlek hareketini anında yatay kaydırmaya dönüştür
+  container.addEventListener("wheel", (e) => {
+    if (e.deltaY !== 0) {
+      e.preventDefault();
+      container.scrollLeft += e.deltaY * 1.2;
+    }
+  }, { passive: false });
+
+  // Mouse ile tıklayıp sürükleme (Drag-to-scroll)
+  let isDown = false;
+  let startX = 0;
+  let scrollLeft = 0;
+  let hasMoved = false;
+
+  container.addEventListener("mousedown", (e) => {
+    isDown = true;
+    hasMoved = false;
+    startX = e.pageX - container.offsetLeft;
+    scrollLeft = container.scrollLeft;
+  });
+
+  window.addEventListener("mouseup", () => {
+    if (isDown) {
+      isDown = false;
+    }
+  });
+
+  container.addEventListener("mousemove", (e) => {
+    if (!isDown) return;
+    const x = e.pageX - container.offsetLeft;
+    const walk = (x - startX);
+    if (Math.abs(walk) > 5) {
+      hasMoved = true;
+    }
+    container.scrollLeft = scrollLeft - walk;
+  });
+
+  // Sürükleme bittiğinde yanlışlıkla koltuk ataması yapılmasını önle
+  container.addEventListener("click", (e) => {
+    if (hasMoved) {
+      e.stopPropagation();
+      e.preventDefault();
+      hasMoved = false;
+    }
+  }, true);
 }
 
 async function doUndo() {
