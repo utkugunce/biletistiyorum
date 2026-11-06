@@ -60,6 +60,26 @@ PLAN_FILENAME = "mac_bilet_plani.json"
 
 # Biletinial PDF dosya adı deseni: "{Blok} {Sıra} - -{Koltuk}.pdf" (ve esnek varyantlar)
 TICKET_REGEX = re.compile(r"^(\d{3})\s*[-_ ]*\s*(\d+)\s*[-_ ]+\s*-?\s*(\d+)\.pdf$", re.IGNORECASE)
+SAHA_REGEX = re.compile(r"^(?:Saha\s*[İiIı]c[iı]|SAHA)\s*([AB])\s*[-_ ]*\s*(\d+)\.pdf$", re.IGNORECASE)
+
+
+def parse_ticket_filename(fname: str) -> Optional[Tuple[str, int, int]]:
+    """
+    Hem standart 3 haneli blok biletlerini ('102 3 - -1.pdf')
+    hem de Saha İçi VIP biletlerini ('Saha İci A27.pdf' -> ('SAHA', 1, 27)) çözümler.
+    """
+    m = TICKET_REGEX.match(fname)
+    if m:
+        return (m.group(1), int(m.group(2)), int(m.group(3)))
+
+    m_saha = SAHA_REGEX.match(fname)
+    if m_saha:
+        row_letter = m_saha.group(1).upper()
+        row_num = 1 if row_letter == "A" else 2
+        seat_num = int(m_saha.group(2))
+        return ("SAHA", row_num, seat_num)
+
+    return None
 
 DEFAULT_PALETTE = [
     "#2563EB",
@@ -276,7 +296,7 @@ class StateManager:
         for root, dirs, files in os.walk(folder):
             dirs[:] = [d for d in dirs if d not in IGNORED_DIRS and not d.startswith(".")]
             for fname in files:
-                if TICKET_REGEX.match(fname):
+                if parse_ticket_filename(fname):
                     return extract_pdf_match_info(Path(root) / fname)
         return {"match_name": folder.name, "match_date": "", "venue": "TVF Ziraat Bankkart Voleybol Salonu"}
 
@@ -384,7 +404,10 @@ state_mgr = StateManager()
 
 
 def _is_raw_block_folder(folder_name: str) -> bool:
-    """Klasör adı '121 BLOK' veya '102' gibi salt blok klasörü mü kontrol eder."""
+    """Klasör adı '121 BLOK', '102' veya 'SAHA İÇİ' gibi salt blok klasörü mü kontrol eder."""
+    fn = folder_name.strip().lower()
+    if fn in ("saha", "saha içi", "saha ici", "saha_ici"):
+        return True
     return bool(re.match(r"^\d{3}(\s*BLOK)?$", folder_name.strip(), re.IGNORECASE))
 
 
@@ -412,12 +435,10 @@ def scan_match_folder(folder: Path) -> Dict[str, Any]:
         rel_parts = [p for p in rel_root.parts if not _is_raw_block_folder(p)]
 
         for fname in files:
-            m = TICKET_REGEX.match(fname)
-            if not m:
+            parsed = parse_ticket_filename(fname)
+            if not parsed:
                 continue
-            block_id, row_str, seat_str = m.group(1), m.group(2), m.group(3)
-            row_num = int(row_str)
-            seat_num = int(seat_str)
+            block_id, row_num, seat_num = parsed
             key = f"{block_id}:{row_num}-{seat_num}"
             full_path = Path(root) / fname
             if sample_pdf is None:
@@ -1151,9 +1172,11 @@ def api_auto_assign_all():
     assigned_results = []
 
     for req in pending_reqs:
-        target_b = req.get("target_block", "121").strip()
-        if not target_b or target_b.lower() in ("saha içi", "saha ici"):
-            target_b = "121"
+        target_b = req.get("target_block", "").strip()
+        if target_b.lower() in ("saha", "saha içi", "saha ici", "saha_ici", "si"):
+            target_b = "SAHA"
+        elif not target_b or target_b not in state["blocks"]:
+            target_b = "102" if "102" in state["blocks"] else "121"
 
         b_tickets = state["blocks"].get(target_b, {}).get("tickets", {})
         needed = req.get("requested_count", 1) - len(req.get("assigned_seats", []))
@@ -1204,9 +1227,11 @@ def api_auto_assign_all():
 
 
 def format_seats_label(block: str, seats: List[str]) -> str:
-    """Koltuk listesini '121 Blok, Sıra 4 (Koltuk: 1, 2)' şeklinde okunur biçimlendirir."""
+    """Koltuk listesini '121 Blok, Sıra 4 (Koltuk: 1, 2)' veya 'Saha İçi, Sıra A (27, 28)' şeklinde okunur biçimlendirir."""
+    is_saha = str(block).upper() in ("SAHA", "SI", "SAHA İÇİ", "SAHA ICI")
+    block_title = "Saha İçi" if is_saha else f"{block} Blok"
     if not seats:
-        return f"{block} Blok"
+        return block_title
     rows_map: Dict[int, List[int]] = {}
     for s in seats:
         try:
@@ -1218,10 +1243,14 @@ def format_seats_label(block: str, seats: List[str]) -> str:
     for r_num in sorted(rows_map.keys()):
         s_nums = sorted(rows_map[r_num])
         s_str = ", ".join(str(n) for n in s_nums)
-        parts.append(f"Sıra {r_num}: {s_str}")
+        if is_saha:
+            row_name = "Sıra A" if r_num == 1 else "Sıra B" if r_num == 2 else f"Sıra {r_num}"
+            parts.append(f"{row_name}: {s_str}")
+        else:
+            parts.append(f"Sıra {r_num}: {s_str}")
     if parts:
-        return f"{block} Blok ({' · '.join(parts)})"
-    return f"{block} Blok ({', '.join(seats)})"
+        return f"{block_title} ({' · '.join(parts)})"
+    return f"{block_title} ({', '.join(seats)})"
 
 
 def build_whatsapp_message(person: str, match_title: str, match_date: str, block: str, seats: List[str]) -> str:
@@ -1457,7 +1486,11 @@ def api_download_single_ticket(block: str = Query(...), seat: str = Query(...)):
 
     try:
         r_str, s_str = seat.split("-")
-        clean_name = f"ZEREN_SPOR_{block}Blok_Sira{r_str}_Koltuk{s_str}.pdf"
+        if block.upper() in ("SAHA", "SI"):
+            r_disp = "A" if r_str == "1" else "B" if r_str == "2" else r_str
+            clean_name = f"ZEREN_SPOR_SahaIci_Sira{r_disp}_Koltuk{s_str}.pdf"
+        else:
+            clean_name = f"ZEREN_SPOR_{block}Blok_Sira{r_str}_Koltuk{s_str}.pdf"
     except Exception:
         clean_name = f"ZEREN_SPOR_{block}Blok_{seat}.pdf"
 
@@ -1511,9 +1544,9 @@ def _find_ticket_path_map(folder: Path) -> Dict[str, Path]:
     for root, dirs, files in os.walk(folder):
         dirs[:] = [d for d in dirs if d not in IGNORED_DIRS and not d.startswith(".")]
         for fname in files:
-            m = TICKET_REGEX.match(fname)
-            if m:
-                key = f"{m.group(1)}:{int(m.group(2))}-{int(m.group(3))}"
+            parsed = parse_ticket_filename(fname)
+            if parsed:
+                key = f"{parsed[0]}:{parsed[1]}-{parsed[2]}"
                 mapping[key] = Path(root) / fname
     return mapping
 
@@ -1669,9 +1702,9 @@ def api_excel_assign(payload: ExcelAssignPayload):
     state = scan_match_folder(folder)
     target_block = payload.block_id.strip()
 
-    # Eğer Saha İçi ise sanal olarak 121 veya özel bloğa yerleştir
-    if target_block.lower() in ("saha içi", "saha ici"):
-        target_block = "121"
+    # Eğer Saha İçi ise SAHA bloğuna yerleştir
+    if target_block.lower() in ("saha", "saha içi", "saha ici", "saha_ici", "si"):
+        target_block = "SAHA"
 
     b_tickets = state["blocks"].get(target_block, {}).get("tickets", {})
 

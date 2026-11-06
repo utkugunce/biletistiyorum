@@ -206,9 +206,10 @@ function renderActiveBlockPills() {
   if (activeBlocks.length > 1) {
     activeBlocks.forEach((b) => {
       const cnt = b.total_active || b.total_pdfs || 0;
+      const bTitle = b.id === "SAHA" ? "Saha İçi" : b.id;
       const btn = document.createElement("button");
       btn.className = "block-pill-btn" + (b.id === currentBlockId ? " active" : "");
-      btn.innerHTML = `<span>${b.id}</span> <strong>${b.assigned_count}/${cnt}</strong>`;
+      btn.innerHTML = `<span>${bTitle}</span> <strong>${b.assigned_count}/${cnt}</strong>`;
       btn.addEventListener("click", () => selectBlock(b.id));
       container.appendChild(btn);
     });
@@ -315,6 +316,7 @@ function renderDatalists() {
 }
 
 function selectBlock(blockId) {
+  if (blockId && String(blockId).toLowerCase().includes("saha")) blockId = "SAHA";
   currentBlockId = blockId;
   selectedSeats.clear();
   lastClickedSeat = null;
@@ -332,7 +334,7 @@ function renderSeatingStage() {
   const bInfo = appState.blocks[currentBlockId];
   if (!bInfo) return;
 
-  document.getElementById("currentBlockTitle").textContent = `${bInfo.id} BLOK`;
+  document.getElementById("currentBlockTitle").textContent = bInfo.id === "SAHA" ? "SAHA İÇİ (VIP / PROTOKOL)" : `${bInfo.id} BLOK`;
   document.getElementById("currentBlockMetrics").textContent =
     `Kapasite: ${bInfo.capacity} · Dolu: ${bInfo.assigned_count} · Boşta/Diğer: ${bInfo.available_count} · Boş: ${bInfo.missing_count}`;
 
@@ -354,10 +356,11 @@ function renderSeatingStage() {
     rowEl.className = "seat-row";
 
     // Sol Sıra Başlığı
+    const rowLabelText = rowObj.label ? `Sıra ${rowObj.label}` : `Sıra ${rNum}`;
     const rowBtnLeft = document.createElement("button");
     rowBtnLeft.className = "row-label-btn";
-    rowBtnLeft.textContent = `Sıra ${rNum}`;
-    rowBtnLeft.title = `Sıra ${rNum} içindeki tüm koltukları seç veya bırak`;
+    rowBtnLeft.textContent = rowLabelText;
+    rowBtnLeft.title = `${rowLabelText} içindeki tüm koltukları seç veya bırak`;
     rowBtnLeft.addEventListener("click", () => toggleEntireRow(rNum, rowObj.cells));
     rowEl.appendChild(rowBtnLeft);
 

@@ -576,8 +576,8 @@ export default async function handler(req, res) {
 
   // 7. POST /api/excel/assign-request
   if (pathname === "/api/excel/assign-request" && req.method === "POST") {
-    let targetBlock = String(body.block_id || "121").trim();
-    if (targetBlock.toLowerCase().includes("saha")) targetBlock = "121";
+    let targetBlock = String(body.block_id || "102").trim();
+    if (targetBlock.toLowerCase().includes("saha")) targetBlock = "SAHA";
 
     const currentState = buildFullState(baseData.base_state, sysState);
     const blockObj = currentState.blocks[targetBlock];
@@ -636,8 +636,8 @@ export default async function handler(req, res) {
     for (const pr of portalReqs) {
       const person = pr.person || "";
       const reqCount = parseInt(pr.requested_count || 1, 10);
-      let targetBlock = pr.target_block || "121";
-      if (targetBlock.toLowerCase().includes("saha")) targetBlock = "121";
+      let targetBlock = pr.target_block || "102";
+      if (targetBlock.toLowerCase().includes("saha")) targetBlock = "SAHA";
 
       // Check existing assigned seats for this person
       const existing = Object.entries(sysState.virtual_assignments).filter(
@@ -699,11 +699,14 @@ export default async function handler(req, res) {
       const indTickets = g.seat_keys.map((k) => {
         const [bId, sid] = k.split(":");
         const [r, s] = sid.split("-");
+        const isSaha = bId.toUpperCase() === "SAHA";
+        const rLabel = isSaha ? (r === "1" ? "A" : "B") : r;
+        const bLabel = isSaha ? "Saha İçi" : `${bId} Blok`;
         return {
           block: bId,
           seat: sid,
-          label: `${bId} Blok · S.${r} K.${s}`,
-          filename: `ZEREN_SPOR_${bId}Blok_Sira${r}_Koltuk${s}.pdf`,
+          label: `${bLabel} · S.${rLabel} K.${s}`,
+          filename: `ZEREN_SPOR_${isSaha ? "SahaIci" : bId + "Blok"}_Sira${rLabel}_Koltuk${s}.pdf`,
           download_url: `/api/tickets/download-single?block=${bId}&seat=${sid}`,
           has_pdf: false
         };

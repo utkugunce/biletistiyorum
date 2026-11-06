@@ -25,7 +25,7 @@ ARENA_ZONES = {
     "west_lower": ["116", "117", "118"],
     "east_lower": ["107", "106", "105"],
     "east_upper": ["205", "204", "203"],
-    "south_lower": ["120", "121", "102", "103", "104"],
+    "south_lower": ["120", "121", "102", "103", "104", "SAHA"],
     "south_upper": ["217", "218", "201", "202"],
 }
 
@@ -124,6 +124,25 @@ def _build_all_blocks() -> Dict[str, Dict[str, Any]]:
             {"row": r, "cells": _desc(23)} for r in range(3, 9)
         ] + [
             {"row": 9, "cells": _pad_left(_desc(22), 23)}
+        ],
+    }
+
+    # ---------------------------------------------------------
+    # SAHA İÇİ (Özel VIP & Protokol) - Sıra A (1) ve Sıra B (2)
+    # ---------------------------------------------------------
+    # Sıra A: 27..31 (5 koltuk)
+    # Sıra B: 27..31, 39..52 (19 koltuk)
+    row_saha_a = [27, 28, 29, 30, 31] + ([None] * 21)
+    row_saha_b = [27, 28, 29, 30, 31] + ([None] * 7) + list(range(39, 53))
+    blocks["SAHA"] = {
+        "id": "SAHA",
+        "name": "SAHA İÇİ",
+        "zone": "south_lower",
+        "court_side": "bottom",
+        "cols": 26,
+        "rows": [
+            {"row": 1, "label": "A", "cells": row_saha_a},
+            {"row": 2, "label": "B", "cells": row_saha_b},
         ],
     }
 
