@@ -2494,11 +2494,23 @@ async function handleDispatchSendWhatsApp(r, cardEl) {
     dlCount++;
   });
 
-  const waUrl = targetPhone
-    ? `https://web.whatsapp.com/send?phone=${targetPhone}`
-    : "https://web.whatsapp.com";
-
-  window.open(waUrl, "_blank");
+  // WhatsApp Windows Uygulamasını Doğrudan Aç (whatsapp:// protokolü)
+  if (targetPhone) {
+    const waAppUrl = `whatsapp://send?phone=${targetPhone}`;
+    // Windows WhatsApp uygulamasını tetikle
+    const waLink = document.createElement("a");
+    waLink.href = waAppUrl;
+    document.body.appendChild(waLink);
+    waLink.click();
+    document.body.removeChild(waLink);
+  } else {
+    // Telefon yoksa genel WhatsApp uygulamasını aç
+    const waLink = document.createElement("a");
+    waLink.href = "whatsapp://";
+    document.body.appendChild(waLink);
+    waLink.click();
+    document.body.removeChild(waLink);
+  }
 
   await setRecipientSentStatus(r.id, r.person, true);
   r.whatsapp_sent = true;
