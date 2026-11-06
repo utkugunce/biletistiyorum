@@ -27,7 +27,8 @@
     "Mehmet Antep": "#EA580C",
     "diğer": "#F59E0B",
     "diger": "#F59E0B",
-    "SAHA İÇİ": "#0284C7"
+    "SAHA İÇİ": "#0284C7",
+    "Test Kisi": "#C026D3"
   },
   "saved_groups": [
     {
@@ -336,6 +337,21 @@
     "112bc9897a91abe7e588d5365181bd8ef871798441e2f7a8",
     "0185ff83460db195d9986826846e4982ad0486c75a2646be",
     "ed75d716957ac18beac9638e86b914941142398cc3c727a3",
-    "98cbbe401454378ea3a6fe7e8b7961f217b37d63febf3742"
-  ]
+    "98cbbe401454378ea3a6fe7e8b7961f217b37d63febf3742",
+    "ac691f050b3b489ec61c5e2b192b719e6a2e125c0f300ccc"
+  ],
+  "phonebook": {
+    "Eşref Arıcan": "+90 533 233 43 45",
+    "Ayşe Fidan": "+90 536 476 97 31",
+    "Neslihan Erşahin": "+90 533 680 17 87",
+    "Ömer Özdemir": "+90 533 527 86 96",
+    "Tansu Ünal": "+90 534 291 26 72",
+    "Aysu Balcı": "+90 542 433 90 57",
+    "Çağlar Oskay": "+90 532 548 99 11",
+    "Ahmet Salih Canbaz": "+90 546 464 06 12",
+    "Seda Canlı": "+1 609 724-5092",
+    "Burak Eser": "+90 554 646 59 58",
+    "Kerem Taha Solmaz": "+90 507 634 78 75",
+    "Mehmet Antep": "+90 538 356 24 40"
+  }
 }

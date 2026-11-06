@@ -752,6 +752,7 @@ async def admin_auth_middleware(request: Request, call_next):
         or path.startswith("/api/portal")
         or path.startswith("/api/auth/login")
         or path.startswith("/api/auth/check")
+        or path == "/api/open-explorer"
         or request.method == "OPTIONS"
     ):
         return await call_next(request)
@@ -1913,13 +1914,15 @@ def api_save_history():
     return {"ok": True, "history": state_mgr.storage["history"]}
 
 
-@app.post("/api/open-explorer")
-def api_open_explorer(req: OpenExplorerRequest):
+@app.api_route("/api/open-explorer", methods=["GET", "POST"])
+def api_open_explorer(group: str = "", subgroup: str = "", req: Optional[OpenExplorerRequest] = None):
+    grp = (req.group if req else "") or group
+    sub = (req.subgroup if req else "") or subgroup
     target = state_mgr.active_folder
-    if req.group:
-        target = target / req.group
-        if req.subgroup:
-            target = target / req.subgroup
+    if grp:
+        target = target / grp
+        if sub:
+            target = target / sub
     if not target.exists():
         target = state_mgr.active_folder
     try:

@@ -759,6 +759,11 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: "Bilet bulunamadı." });
   }
 
+  // 9.8 POST /api/open-explorer (no-op on cloud server)
+  if (pathname === "/api/open-explorer") {
+    return res.status(200).json({ ok: true });
+  }
+
   // 10. POST /api/dispatch/mark-sent
   if (pathname === "/api/dispatch/mark-sent" && req.method === "POST") {
     sysState.sent_map = sysState.sent_map || {};

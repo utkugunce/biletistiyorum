@@ -2494,17 +2494,29 @@ async function handleDispatchSendWhatsApp(r, cardEl) {
     dlCount++;
   });
 
-  // WhatsApp Windows Uygulamasını Doğrudan Aç (whatsapp:// protokolü)
+  // 1. Windows Klasörünü Otomatik Aç (Kişinin bilet klasörü)
+  try {
+    const personName = r.person || "";
+    // Hem yerel port 8765 hem de bağıl /api/open-explorer çağrısı
+    fetch("http://127.0.0.1:8765/api/open-explorer?group=" + encodeURIComponent(personName), { mode: "no-cors" }).catch(() => {});
+    fetch("/api/open-explorer", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ group: personName, subgroup: "" })
+    }).catch(() => {});
+  } catch (err) {
+    console.log("Explorer açma isteği:", err);
+  }
+
+  // 2. WhatsApp Windows Masaüstü Uygulamasını Doğrudan Aç (whatsapp:// protokolü)
   if (targetPhone) {
     const waAppUrl = `whatsapp://send?phone=${targetPhone}`;
-    // Windows WhatsApp uygulamasını tetikle
     const waLink = document.createElement("a");
     waLink.href = waAppUrl;
     document.body.appendChild(waLink);
     waLink.click();
     document.body.removeChild(waLink);
   } else {
-    // Telefon yoksa genel WhatsApp uygulamasını aç
     const waLink = document.createElement("a");
     waLink.href = "whatsapp://";
     document.body.appendChild(waLink);

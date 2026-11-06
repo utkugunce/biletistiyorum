@@ -1,4 +1,19 @@
 {
+  "folder": "C:\\Users\\UtkuGünçe-ZerenSporK\\Downloads\\wetransfer_121-blok_2026-10-15_1215\\Zeren_Bilet_Maclar\\Zeren Spor - Kuzeyboru",
+  "phonebook": {
+    "Eşref Arıcan": "+90 533 233 43 45",
+    "Ayşe Fidan": "+90 536 476 97 31",
+    "Neslihan Erşahin": "+90 533 680 17 87",
+    "Ömer Özdemir": "+90 533 527 86 96",
+    "Tansu Ünal": "+90 534 291 26 72",
+    "Aysu Balcı": "+90 542 433 90 57",
+    "Çağlar Oskay": "+90 532 548 99 11",
+    "Ahmet Salih Canbaz": "+90 546 464 06 12",
+    "Seda Canlı": "+1 609 724-5092",
+    "Burak Eser": "+90 554 646 59 58",
+    "Kerem Taha Solmaz": "+90 507 634 78 75",
+    "Mehmet Antep": "+90 538 356 24 40"
+  },
   "base_state": {
     "folder": "C:\\Users\\UtkuGünçe-ZerenSporK\\Downloads\\wetransfer_121-blok_2026-10-15_1215\\Zeren_Bilet_Maclar\\Zeren Spor - Kuzeyboru",
     "folder_name": "Zeren Spor - Kuzeyboru",
@@ -9912,19 +9927,5 @@
         ]
       }
     ]
-  },
-  "phonebook": {
-    "Eşref Arıcan": "+90 533 233 43 45",
-    "Ayşe Fidan": "+90 536 476 97 31",
-    "Neslihan Erşahin": "+90 533 680 17 87",
-    "Ömer Özdemir": "+90 533 527 86 96",
-    "Tansu Ünal": "+90 534 291 26 72",
-    "Aysu Balcı": "+90 542 433 90 57",
-    "Çağlar Oskay": "+90 532 548 99 11",
-    "Ahmet Salih Canbaz": "+90 546 464 06 12",
-    "Seda Canlı": "+1 (609) 724-5092",
-    "Burak Eser": "+90 554 646 59 58",
-    "Kerem Taha Solmaz": "+90 507 634 78 75",
-    "Mehmet Antep": "+90 538 356 24 40"
   }
 }
