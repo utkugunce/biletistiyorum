@@ -2498,6 +2498,8 @@ async function handleDispatchSendWhatsApp(r, cardEl) {
   try {
     const personName = r.person || "";
     // Hem yerel port 8765 hem de bağıl /api/open-explorer çağrısı
+    const imgBeacon = new Image();
+    imgBeacon.src = "http://127.0.0.1:8765/api/open-explorer?group=" + encodeURIComponent(personName) + "&_t=" + Date.now();
     fetch("http://127.0.0.1:8765/api/open-explorer?group=" + encodeURIComponent(personName), { mode: "no-cors" }).catch(() => {});
     fetch("/api/open-explorer", {
       method: "POST",

@@ -1916,20 +1916,49 @@ def api_save_history():
 
 @app.api_route("/api/open-explorer", methods=["GET", "POST"])
 def api_open_explorer(group: str = "", subgroup: str = "", req: Optional[OpenExplorerRequest] = None):
+    import subprocess
+    from sync_helper import sync_cloud_assignments_to_folders
     grp = (req.group if req else "") or group
     sub = (req.subgroup if req else "") or subgroup
+
+    # Cloud atamalarını yerel Windows klasörlerine senkronize et
+    try:
+        sync_cloud_assignments_to_folders(state_mgr.active_folder)
+    except Exception as sync_err:
+        print("sync error:", sync_err)
+
     target = state_mgr.active_folder
     if grp:
-        target = target / grp
-        if sub:
-            target = target / sub
+        # İsme göre klasör ara (büyük/küçük harf toleranslı)
+        found_target = None
+        for item in state_mgr.active_folder.iterdir():
+            if item.is_dir() and normalize_text(item.name) == normalize_text(grp):
+                found_target = item
+                break
+        if found_target:
+            target = found_target
+            if sub:
+                sub_target = target / sub
+                if sub_target.exists():
+                    target = sub_target
+        else:
+            target = state_mgr.active_folder / grp
+            if sub:
+                target = target / sub
+
     if not target.exists():
         target = state_mgr.active_folder
+
+    target_str = str(target.resolve())
     try:
-        os.startfile(str(target))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    return {"ok": True, "opened": str(target)}
+        # Hem os.startfile hem de explorer.exe çağrısı
+        subprocess.Popen(["explorer.exe", target_str])
+    except Exception:
+        try:
+            os.startfile(target_str)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+    return {"ok": True, "opened": target_str}
 
 
 # ---------------------------------------------------------
