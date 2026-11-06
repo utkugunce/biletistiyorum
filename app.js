@@ -936,7 +936,7 @@ function renderGroupsSummary() {
         if (res.ok) {
           const data = await res.json();
           updateAppState(data);
-          reloadExcelSummary();
+          fetchExcelSummary();
           showToast(`✅ "${g.display_name}" koltukları boşa çıkarıldı.`);
         } else {
           showToast("Koltuklar boşa çıkarılamadı.");
@@ -1021,6 +1021,8 @@ function switchSidebarTab(tabName) {
   document.getElementById("panelDistribution").classList.toggle("hidden", isExcel);
 }
 
+const reloadExcelSummary = fetchExcelSummary;
+window.reloadExcelSummary = fetchExcelSummary;
 async function fetchExcelSummary(matchName = null) {
   try {
     const url = matchName
@@ -1199,7 +1201,7 @@ function renderExcelPanel() {
           const res = await fetch(`/api/portal/request/${encodeURIComponent(r.request_id)}/delete`, { method: "POST" });
           if (res.ok) {
             showToast("Talep ve atanmış koltuklar silindi.");
-            reloadExcelSummary();
+            fetchExcelSummary();
             fetchState(false);
           } else {
             showToast("Talep silinemedi.");
@@ -1227,7 +1229,7 @@ function renderExcelPanel() {
           if (res.ok) {
             const data = await res.json();
             updateAppState(data);
-            reloadExcelSummary();
+            fetchExcelSummary();
             showToast(`✅ "${r.person}" koltuk atamaları boşa çıkarıldı.`);
           } else {
             showToast("Koltuklar boşa çıkarılamadı.");
