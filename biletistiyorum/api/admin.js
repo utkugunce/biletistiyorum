@@ -222,6 +222,11 @@ function buildFullState(baseState, sysState) {
         bUnassigned++;
       }
     }
+    bObj.assigned_count = bAssigned;
+    bObj.unassigned_count = bUnassigned;
+    bObj.diger_count = 0;
+    bObj.available_count = bUnassigned;
+    bObj.missing_count = Math.max(0, (bObj.capacity || 0) - Object.keys(tickets).length);
     bObj.assigned_tickets = bAssigned;
     bObj.unassigned_tickets = bUnassigned;
     bObj.total_tickets = Object.keys(tickets).length;
