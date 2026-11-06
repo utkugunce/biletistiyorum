@@ -2549,31 +2549,13 @@ async function handleDispatchSendWhatsApp(r, cardEl) {
     }
   }
 
-  // 3. Masaüstü Akışı: Her biletin PDF'ini TEK TEK ayrı ayrı indir + WhatsApp Web Sohbetini Doğrudan Aç
-  const ticketsToDownload = (r.individual_tickets && r.individual_tickets.length > 0)
-    ? r.individual_tickets
-    : [{ download_url: r.download_url, filename: `ZEREN_SPOR_${r.person.replace(/\s+/g, '_')}_Bilet.pdf` }];
+  // 3. Masaüstü Akışı: Tekli bilet indirme YOK. Sadece kişinin Windows klasörü açılır, WhatsApp uygulaması açılır.
+  const dlCount = (r.individual_tickets || []).length || r.seat_count || 0;
 
-  let dlCount = 0;
-  ticketsToDownload.forEach((t, idx) => {
-    setTimeout(() => {
-      triggerDownload(t.download_url, t.filename);
-    }, idx * 250);
-    dlCount++;
-  });
-
-  // 1. Windows Klasörünü Otomatik Aç (Kişinin bilet klasörü)
+  // 1. Windows Klasörünü Oluştur ve Aç (bulutta atanan biletler yerel klasöre ayrılır)
   try {
     const personName = r.person || "";
-    // Hem yerel port 8765 hem de bağıl /api/open-explorer çağrısı
-    const imgBeacon = new Image();
-    imgBeacon.src = "http://127.0.0.1:8765/api/open-explorer?group=" + encodeURIComponent(personName) + "&_t=" + Date.now();
-    fetch("http://127.0.0.1:8765/api/open-explorer?group=" + encodeURIComponent(personName), { mode: "no-cors" }).catch(() => {});
-    fetch("/api/open-explorer", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ group: personName, subgroup: "" })
-    }).catch(() => {});
+    await fetch("http://127.0.0.1:8765/api/open-explorer?group=" + encodeURIComponent(personName), { mode: "no-cors" }).catch(() => {});
   } catch (err) {
     console.log("Explorer açma isteği:", err);
   }
@@ -2598,7 +2580,7 @@ async function handleDispatchSendWhatsApp(r, cardEl) {
   r.whatsapp_sent = true;
   renderDispatchRecipients();
 
-  showToast(`✅ ${r.person} için ${dlCount} tekil bilet indirildi ve WhatsApp açıldı. Biletleri sohbete sürükleyin! 📎`);
+  showToast(`✅ ${r.person} için ${dlCount} bilet klasöre ayrıldı ve WhatsApp açıldı. Klasördeki biletleri sohbete sürükleyin! 📎`);
 }
 
 function handleQuickSendWhatsAppForRequest(req) {
