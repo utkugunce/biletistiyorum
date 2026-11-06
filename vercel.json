@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "name": "biletistiyorum",
+  "rewrites": [
+    { "source": "/api/portal/matches", "destination": "/biletistiyorum/api/matches" },
+    { "source": "/api/portal/staff", "destination": "/biletistiyorum/api/staff" },
+    { "source": "/api/portal/my-requests", "destination": "/biletistiyorum/api/my-requests" },
+    { "source": "/api/portal/request", "destination": "/biletistiyorum/api/request" },
+    { "source": "/api/:path*", "destination": "/biletistiyorum/api/admin" },
+    { "source": "/tickets/:file*", "destination": "/biletistiyorum/tickets/:file*" },
+    { "source": "/static/:file*", "destination": "/biletistiyorum/static/:file*" },
+    { "source": "/admin", "destination": "/biletistiyorum/admin.html" },
+    { "source": "/panel", "destination": "/biletistiyorum/admin.html" },
+    { "source": "/yonetim", "destination": "/biletistiyorum/admin.html" },
+    { "source": "/bilet-istiyorum", "destination": "/biletistiyorum/index.html" },
+    { "source": "/talep", "destination": "/biletistiyorum/index.html" },
+    { "source": "/", "destination": "/biletistiyorum/index.html" }
+  ]
+}
