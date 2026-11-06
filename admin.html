@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Zeren Spor — Bilet Dağıtım ve Takip Sistemi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <link rel="icon" type="image/png" href="/static/zeren_logo.png" />
+  <link rel="stylesheet" href="/static/styles.css" />
+  <!-- PWA Meta Tags & Manifest -->
+  <meta name="theme-color" content="#3b0764" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Zeren Bilet" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.json" />
+</head>
+<body>
+  <!-- ========================================================= -->
+  <!-- YÖNETİCİ GİRİŞ EKRANI (ŞİFRE KORUMASI)                    -->
+  <!-- ========================================================= -->
+  <div id="adminLoginOverlay" class="login-overlay">
+    <div class="login-card">
+      <div class="login-brand">
+        <div class="login-icon-badge">
+          <img src="/static/zeren_logo.png" alt="Zeren Spor Kulübü" class="login-logo-img" />
+        </div>
+        <h2>ZEREN SPOR KULÜBÜ</h2>
+        <p class="login-subtitle">Bilet Dağıtım ve Koltuk Yönetim Paneli</p>
+      </div>
+
+      <div class="login-badge-tag">
+        <i class="ph-bold ph-shield-check"></i>
+        <span>Yönetici Doğrulaması</span>
+      </div>
+
+      <form id="adminLoginForm" class="login-form" autocomplete="off" onsubmit="event.preventDefault(); handleAdminLogin();">
+        <div class="login-field">
+          <label for="adminPasswordInput">
+            <i class="ph-bold ph-lock-key"></i>
+            <span>Yönetici Şifresi</span>
+          </label>
+          <div class="password-input-wrap">
+            <input
+              type="password"
+              id="adminPasswordInput"
+              placeholder="Şifrenizi yazınız..."
+              autocomplete="current-password"
+              required
+              autofocus
+            />
+            <button type="button" class="btn-pwd-peek" id="btnToggleLoginPwd" title="Şifreyi Göster / Gizle">
+              <i class="ph ph-eye" id="iconPeekPwd"></i>
+            </button>
+          </div>
+        </div>
+
+        <div id="loginErrorMsg" class="login-error-msg hidden"></div>
+
+        <button type="submit" class="btn-login-submit" id="btnLoginSubmit">
+          <i class="ph-bold ph-sign-in"></i>
+          <span>Panele Giriş Yap</span>
+        </button>
+      </form>
+
+      <div class="login-card-foot">
+        <a href="https://biletistiyorum.vercel.app" class="link-to-staff-portal" target="_blank" title="Kulüp Personeli Canlı Talep Formunu Aç">
+          <i class="ph-bold ph-globe"></i>
+          <span>Personel Portalı: biletistiyorum.vercel.app ↗</span>
+        </a>
+      </div>
+    </div>
+  </div>
+  <!-- ========================================================= -->
+  <!-- 1. ÜST NAVİGASYON (TEK VE TEMİZ SATIR)                   -->
+  <!-- ========================================================= -->
+  <header class="topbar">
+    <!-- Sol: Logo + Maç Seçimi + Yeni Maç -->
+    <div class="topbar-left">
+      <div class="brand-badge" title="Zeren Spor Kulübü Bilet Dağıtım Sistemi">
+        <img src="/static/zeren_logo.png" alt="Zeren Spor" class="topbar-logo-img" />
+        <span>ZEREN SPOR</span>
+      </div>
+
+      <div class="match-selector-wrap">
+        <select id="selectMatchSwitcher" class="match-dropdown" title="Aktif Maçı Değiştir"></select>
+        <span id="matchDateBadge" class="match-date-tag hidden"></span>
+      </div>
+
+      <button class="btn btn-primary btn-xs" id="btnNewMatchModal" title="Yeni Maç Oluştur veya ZIP Yükle">
+        <i class="ph-bold ph-plus"></i>
+        <span>Yeni Maç</span>
+      </button>
+
+      <button class="btn btn-secondary btn-xs" id="btnUploadTicketsModal" title="Biletinial'dan indirilen PDF biletleri veya ZIP arşivini aktif maça yükle">
+        <i class="ph-bold ph-upload-simple"></i>
+        <span>Bilet Yükle</span>
+      </button>
+
+      <div class="folder-quick-actions">
+        <button class="icon-btn-ghost" id="btnBrowseFolder" title="Başka bir PDF klasörü seç">
+          <i class="ph ph-folder-open"></i>
+        </button>
+        <button class="icon-btn-ghost" id="btnOpenRootExplorer" title="Maç klasörünü Windows Gezgini'nde aç">
+          <i class="ph ph-arrow-square-out"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Orta: Görünüm Sekmeleri (Koltuk Planı vs Salon Haritası) -->
+    <div class="topbar-center">
+      <div class="view-switch-tabs" role="tablist">
+        <button class="view-tab active" id="tabBtnSeating" data-view="seating">
+          <i class="ph-bold ph-armchair"></i>
+          <span>Koltuk Planı</span>
+        </button>
+        <button class="view-tab" id="tabBtnArena" data-view="arena">
+          <i class="ph-bold ph-stadium"></i>
+          <span>Salon Haritası</span>
+        </button>
+        <button class="view-tab view-tab-mobile-only" id="tabBtnMobileSidebar" title="Talepler ve Dağılım Listesi">
+          <i class="ph-bold ph-tray"></i>
+          <span>Talepler</span>
+          <span class="tab-badge" id="badgeMobileRequestsCount">0</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Sağ: Maç Özeti + Temel Butonlar -->
+    <div class="topbar-right">
+      <div class="stats-badge-group">
+        <span class="stat-chip" title="Bu maçtaki toplam bilet/koltuk">
+          <strong id="statTotalPdf">0</strong> Bilet
+        </span>
+        <span class="stat-chip stat-chip-assigned" title="Kişilere dağıtılan bilet sayısı">
+          <strong id="statAssignedPdf">0</strong> Dağıtılan
+        </span>
+        <span class="stat-chip stat-chip-available" title="Boşta veya 'diğer' klasöründeki biletler">
+          <strong id="statAvailablePdf">0</strong> Boş/Diğer
+        </span>
+      </div>
+
+      <div class="action-btn-group">
+        <button class="icon-btn" id="btnUndo" disabled title="Son İşlemi Geri Al (Ctrl+Z)">
+          <i class="ph ph-arrow-u-up-left"></i>
+        </button>
+        <button class="icon-btn" id="btnRedo" disabled title="İleri Al (Ctrl+Y)">
+          <i class="ph ph-arrow-u-up-right"></i>
+        </button>
+        <button class="icon-btn" id="btnRefresh" title="Klasörü Yeniden Tara">
+          <i class="ph ph-arrows-clockwise"></i>
+        </button>
+
+        <button class="btn btn-whatsapp btn-xs" id="btnOpenDispatchModal" title="WhatsApp Bilet Dağıtım Merkezi">
+          <i class="ph-bold ph-whatsapp-logo"></i>
+          <span class="btn-text-desktop">WhatsApp Dağıtım</span>
+          <span class="dispatch-badge-count" id="badgeDispatchPending">0</span>
+        </button>
+
+        <button class="btn btn-secondary btn-xs" id="btnDownloadBlockPng" title="Bu bloğun planını PNG olarak indir">
+          <i class="ph ph-image"></i>
+          <span class="btn-text-desktop">PNG</span>
+        </button>
+
+        <button class="btn btn-secondary btn-xs" id="btnExportAllZip" title="Tüm biletleri ZIP olarak indir">
+          <i class="ph ph-download-simple"></i>
+          <span class="btn-text-desktop">ZIP</span>
+        </button>
+
+        <a href="https://biletistiyorum.vercel.app" target="_blank" class="btn btn-portal btn-xs" title="Kulüp Personeli Canlı Bilet Portalı (biletistiyorum.vercel.app)">
+          <i class="ph-bold ph-globe"></i>
+          <span class="btn-text-desktop">biletistiyorum.vercel.app ↗</span>
+        </a>
+
+        <button class="icon-btn btn-toggle-sidebar" id="btnToggleSidebar" title="Talepler & Dağılım Panelini Aç / Kapat">
+          <i class="ph-bold ph-sidebar-simple"></i>
+        </button>
+
+        <button class="icon-btn" id="btnOpenChangePwdModal" title="Yönetici Şifresini Değiştir">
+          <i class="ph-bold ph-key"></i>
+        </button>
+
+        <button class="icon-btn btn-admin-logout" id="btnLogoutAdmin" title="Yönetici Oturumunu Kapat">
+          <i class="ph-bold ph-sign-out"></i>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========================================================= -->
+  <!-- 2. ANA ÇALIŞMA ALANI (KOLTUK PLANI + SAĞ PANEL)          -->
+  <!-- ========================================================= -->
+  <div class="main-layout">
+    <!-- GÖRÜNÜM 1: KOLTUK PLANI SAHNESİ -->
+    <main class="seating-view" id="viewSeating">
+      <!-- Blok ve Kontrol Araç Çubuğu -->
+      <div class="block-toolbar">
+        <div class="toolbar-left">
+          <span class="toolbar-label">Blok:</span>
+          <select id="selectQuickBlock" class="block-dropdown" title="30 Blok Arasından Seç"></select>
+          <div id="activeBlocksPills" class="active-block-pills"></div>
+          <button class="btn btn-outline btn-xs" id="btnOpenArenaFromBar" title="Görsel salon haritasını aç">
+            <i class="ph ph-stadium"></i>
+            <span>Salon Haritası</span>
+          </button>
+        </div>
+
+        <div class="toolbar-center">
+          <div class="block-info-pill">
+            <span class="block-pill-id" id="currentBlockTitle">121 BLOK</span>
+            <span class="block-pill-details" id="currentBlockMetrics">Kapasite: 160 · Dolu: 130 · Boş: 30</span>
+          </div>
+        </div>
+
+        <div class="toolbar-right">
+          <div class="mode-switch-group">
+            <button class="mode-btn active" data-mode="select" id="modeBtnSelect" title="Tıklayarak veya sürükleyerek çoklu koltuk seçin">
+              Seçim
+            </button>
+            <button class="mode-btn" data-mode="shift" id="modeBtnShift" title="Seçili koltukları başka koltuklara kaydırın veya takas edin">
+              Kaydır / Takas
+            </button>
+          </div>
+
+          <select id="selectColorMode" class="clean-select-xs" title="Renklendirme Modu">
+            <option value="groups">Grup Renkleri</option>
+            <option value="classic">Klasik (Kırmızı / Turuncu)</option>
+          </select>
+
+          <button class="btn btn-outline btn-xs" id="btnPreviewOrigBlock" title="Bu bloğun resmi Biletinial şemasını göster">
+            <i class="ph ph-eye"></i>
+            <span>Orijinal Şema</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Kaydırma Modu Bilgi Bandı -->
+      <div class="shift-banner hidden" id="modeInfoBanner"></div>
+
+      <!-- KOLTUK IZGARASI ALANI (KAYDIRMA BUG'I DÜZELTİLMİŞ) -->
+      <div class="canvas-wrapper" id="seatingStageWrapper">
+        <div id="courtIndicatorTop" class="court-direction-bar court-bar-top hidden">
+          ▲ SAHA YÖNÜ (VOLEYBOL KORTU) ▲
+        </div>
+
+        <div class="canvas-middle-row">
+          <div id="courtIndicatorLeft" class="court-direction-bar court-bar-side hidden">
+            ◄ SAHA
+          </div>
+
+          <div class="seating-scroll-container" id="seatingGridScroll">
+            <div class="seating-sheet">
+              <div id="seatingGridContainer" class="seating-grid-table"></div>
+            </div>
+          </div>
+
+          <div id="courtIndicatorRight" class="court-direction-bar court-bar-side hidden">
+            SAHA ►
+          </div>
+        </div>
+
+        <div id="courtIndicatorBottom" class="court-direction-bar court-bar-bottom hidden">
+          ▼ SAHA YÖNÜ (VOLEYBOL KORTU) ▼
+        </div>
+      </div>
+
+      <!-- ========================================================= -->
+      <!-- SABİT ALT DOCK (SEÇİM VE ATAMA ÇUBUĞU)                   -->
+      <!-- ========================================================= -->
+      <footer class="bottom-dock" id="bottomDock">
+        <!-- Durum 1: Koltuk seçili değilken temiz renk lejantı -->
+        <div class="dock-idle-row" id="dockIdleState">
+          <span class="dock-guide-text">
+            <i class="ph ph-info"></i>
+            Koltuklara tıklayarak veya fareyi sürükleyerek seçim yapın.
+          </span>
+          <div class="dock-legend-chips" id="blockLegendBar"></div>
+        </div>
+
+        <!-- Durum 2: Koltuk seçildiğinde çalışan atama barı -->
+        <div class="dock-action-row hidden" id="selectionActionBar">
+          <div class="dock-selection-summary">
+            <span class="dock-sel-badge" id="selCountBadge">
+              <i class="ph-bold ph-check-circle"></i>
+              <span id="selCountText">0 Koltuk</span>
+            </span>
+            <span class="dock-sel-seats" id="selSeatsPreview" title="Seçili koltuklar"></span>
+            <button class="dock-btn-clear" id="btnClearSelection" title="Seçimi İptal Et (Esc)">
+              <i class="ph-bold ph-x"></i>
+              <span>Temizle</span>
+            </button>
+          </div>
+
+          <div class="dock-divider"></div>
+
+          <div class="dock-chips-wrapper">
+            <button type="button" class="dock-scroll-arrow left" id="btnScrollChipsLeft" title="Sola kaydır">
+              <i class="ph-bold ph-caret-left"></i>
+            </button>
+            <div class="dock-chip-list" id="quickGroupChips" title="Kaydırmak için mouse tekerleğini kullanabilir veya sürükleyebilirsiniz"></div>
+            <button type="button" class="dock-scroll-arrow right" id="btnScrollChipsRight" title="Sağa kaydır">
+              <i class="ph-bold ph-caret-right"></i>
+            </button>
+          </div>
+
+          <div class="dock-divider"></div>
+
+          <div class="dock-assign-form">
+            <div class="dock-input-group">
+              <i class="ph-bold ph-user dock-input-icon"></i>
+              <input
+                type="text"
+                id="inputAssignGroup"
+                list="datalistGroups"
+                placeholder="Kişi / Grup..."
+                class="dock-input-field"
+                autocomplete="off"
+              />
+            </div>
+            <datalist id="datalistGroups"></datalist>
+
+            <div class="dock-input-group dock-input-group-sub">
+              <i class="ph-bold ph-tag dock-input-icon"></i>
+              <input
+                type="text"
+                id="inputAssignSubgroup"
+                list="datalistSubgroups"
+                placeholder="Alt grup / Not..."
+                class="dock-input-field dock-input-sub"
+                autocomplete="off"
+              />
+            </div>
+            <datalist id="datalistSubgroups"></datalist>
+
+            <button class="dock-action-btn btn-dock-primary" id="btnApplyAssign" title="Seçili koltukları bu kişiye ata">
+              <i class="ph-bold ph-check"></i>
+              <span>Ata</span>
+            </button>
+            <button class="dock-action-btn btn-dock-secondary" id="btnMoveToDiger" title="Seçili biletleri 'diğer' statüsüne taşı">
+              <i class="ph-bold ph-archive"></i>
+              <span>Diğer'e Koy</span>
+            </button>
+            <button class="dock-action-btn btn-dock-ghost" id="btnMoveToRoot" title="Seçili biletleri boşa çıkar">
+              <i class="ph-bold ph-arrows-counter-clockwise"></i>
+              <span>Boşa Çıkar</span>
+            </button>
+          </div>
+        </div>
+      </footer>
+    </main>
+
+    <!-- GÖRÜNÜM 2: TAM EKRAN ARENA HARİTASI (30 BLOK) -->
+    <main class="arena-view hidden" id="viewArena">
+      <div class="arena-card">
+        <div class="arena-card-header">
+          <div>
+            <h2>Başkent Voleybol Salonu — Tribün Blokları (30 Blok)</h2>
+            <p>Açmak istediğiniz bloğa tıklayarak koltuk planına geçebilirsiniz.</p>
+          </div>
+          <div class="arena-card-actions">
+            <label class="custom-check-label">
+              <input type="checkbox" id="chkOnlyActiveBlocks" />
+              <span>Sadece bilet olan blokları vurgula</span>
+            </label>
+            <button class="btn btn-secondary btn-sm" id="btnOpenOriginalArena">
+              <i class="ph ph-image"></i>
+              <span>Orijinal Salon Planı</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="stadium-graphic">
+          <div class="stadium-tier-label">KUZEY ÜST TRİBÜN (206 – 213)</div>
+          <div class="stadium-row-blocks" id="zone-north_upper"></div>
+
+          <div class="stadium-tier-label">KUZEY ALT TRİBÜN (108 – 115)</div>
+          <div class="stadium-row-blocks" id="zone-north_lower"></div>
+
+          <div class="stadium-middle-grid">
+            <div class="stadium-wing-column">
+              <div class="stadium-wing-title">BATI ÜST</div>
+              <div class="stadium-col-blocks" id="zone-west_upper"></div>
+            </div>
+            <div class="stadium-wing-column">
+              <div class="stadium-wing-title">BATI ALT</div>
+              <div class="stadium-col-blocks" id="zone-west_lower"></div>
+            </div>
+
+            <div class="stadium-court-center">
+              <div class="court-box-inner">
+                <span class="court-logo-text">VOLEYBOL SAHASI</span>
+                <span class="court-sub-text">TVF Ziraat Bankkart Salonu</span>
+              </div>
+            </div>
+
+            <div class="stadium-wing-column">
+              <div class="stadium-wing-title">DOĞU ALT</div>
+              <div class="stadium-col-blocks" id="zone-east_lower"></div>
+            </div>
+            <div class="stadium-wing-column">
+              <div class="stadium-wing-title">DOĞU ÜST</div>
+              <div class="stadium-col-blocks" id="zone-east_upper"></div>
+            </div>
+          </div>
+
+          <div class="stadium-tier-label">GÜNEY ALT TRİBÜN (120 – 121 & 102 – 104)</div>
+          <div class="stadium-row-blocks" id="zone-south_lower"></div>
+
+          <div class="stadium-tier-label stadium-tier-closed">GÜNEY ÜST (PROTOKOL & VIP — SATIŞA KAPALI)</div>
+          <div class="stadium-row-blocks" id="zone-south_upper"></div>
+        </div>
+      </div>
+    </main>
+
+    <!-- ========================================================= -->
+    <!-- 3. SAĞ SÜTUN: EXCEL TALEPLERİ & DAĞILIM LİSTESİ           -->
+    <!-- ========================================================= -->
+    <div class="sidebar-backdrop hidden" id="sidebarBackdrop"></div>
+    <aside class="sidebar-column" id="sidebarColumn">
+      <!-- Mobil Kapatma Başlığı -->
+      <div class="sidebar-mobile-header">
+        <div class="sidebar-mobile-title">
+          <i class="ph-bold ph-tray"></i>
+          <span>Talepler & Dağılım</span>
+        </div>
+        <button class="icon-btn-sm" id="btnCloseSidebarMobile" title="Paneli Kapat">
+          <i class="ph-bold ph-x"></i>
+        </button>
+      </div>
+
+      <!-- Sekme Butonları (Gelen Talepler vs Dağılım Özeti) -->
+      <div class="sidebar-tabs-bar" role="tablist">
+        <button class="sidebar-nav-tab active" id="tabBtnExcel" data-panel="excel">
+          <i class="ph-bold ph-tray"></i>
+          <span>Talepler & Excel</span>
+          <span class="tab-badge" id="badgeExcelPendingCount">0</span>
+        </button>
+        <button class="sidebar-nav-tab" id="tabBtnDistribution" data-panel="dist">
+          <i class="ph-bold ph-users-three"></i>
+          <span>Dağılım Özeti</span>
+          <span class="tab-badge" id="badgeAssignedPeopleCount">0</span>
+        </button>
+      </div>
+
+      <!-- PANEL 1: CANLI TALEP VE EXCEL TAKİBİ -->
+      <div class="sidebar-panel-view" id="panelExcel">
+        <div class="excel-panel-header">
+          <div class="excel-file-status" title="Davetiye Excel ve Bilet İstiyorum Portalı Canlı Bağlantısı">
+            <span class="pulse-dot"></span>
+            <span class="excel-status-title">Excel & Bilet İstiyorum Portalı</span>
+          </div>
+          <button class="btn btn-outline btn-xs" id="btnSyncExcel" title="Talepleri ve Excel'i yeniden tara">
+            <i class="ph ph-arrows-clockwise"></i>
+            <span>Yenile</span>
+          </button>
+        </div>
+
+        <!-- Canlı Vercel Portal Linki ve Hızlı Kopyalama -->
+        <div class="portal-live-banner">
+          <div class="portal-live-info">
+            <span class="portal-live-badge"><i class="ph-bold ph-globe"></i> Canlı Portal</span>
+            <a href="https://biletistiyorum.vercel.app" target="_blank" class="portal-live-url" title="Kulüp Personeli Canlı Formunu Aç">
+              biletistiyorum.vercel.app
+              <i class="ph ph-arrow-square-out"></i>
+            </a>
+          </div>
+          <button class="btn btn-portal-copy btn-xs" id="btnCopyPortalUrl" title="Personelle WhatsApp'tan paylaşmak için linki kopyala">
+            <i class="ph ph-copy"></i>
+            <span>Kopyala</span>
+          </button>
+        </div>
+
+        <!-- Excel Hızlı Sayaçları -->
+        <div class="excel-quick-stats">
+          <div class="excel-stat-box">
+            <span class="stat-label">Toplam Talep</span>
+            <span class="stat-val" id="excelStatRequested">0</span>
+          </div>
+          <div class="excel-stat-box">
+            <span class="stat-label">Atanan Koltuk</span>
+            <span class="stat-val stat-val-green" id="excelStatAssigned">0</span>
+          </div>
+          <div class="excel-stat-box">
+            <span class="stat-label">Kalan / Bekleyen</span>
+            <span class="stat-val stat-val-amber" id="excelStatPending">0</span>
+          </div>
+        </div>
+
+        <!-- Excel Filtreleri: Blok & Arama -->
+        <div class="excel-filter-row">
+          <select id="selectExcelBlockFilter" class="clean-select-xs" title="Talepleri Filtrele">
+            <option value="ALL">Tüm Talepler</option>
+            <option value="PORTAL">🌐 Sadece "Bilet İstiyorum" Talepleri</option>
+          </select>
+          <div class="sidebar-search-box" style="flex:1;">
+            <i class="ph ph-magnifying-glass search-ico"></i>
+            <input
+              type="text"
+              id="inputSearchExcel"
+              placeholder="Personel veya not ara..."
+              class="sidebar-search-input"
+            />
+          </div>
+        </div>
+
+        <!-- Hızlı İşlem Butonları (Akıllı Dağıt & WhatsApp) -->
+        <div class="excel-quick-bar">
+          <button class="btn btn-primary btn-xs" id="btnAutoAssignAll" title="Bekleyen tüm talepleri mevcut boş koltuklarla otomatik eşleştir">
+            <i class="ph-bold ph-lightning"></i>
+            <span>Akıllı Eşleştir (Tümünü Ata)</span>
+          </button>
+          <button class="btn btn-whatsapp btn-xs" id="btnSidebarOpenDispatch" title="WhatsApp Bilet Dağıtım Merkezi">
+            <i class="ph-bold ph-whatsapp-logo"></i>
+            <span>WhatsApp Dağıtım</span>
+          </button>
+        </div>
+
+        <!-- Excel Talep Kartları Listesi -->
+        <div class="sidebar-list" id="excelRequestsList"></div>
+      </div>
+
+      <!-- PANEL 2: MEVCUT KİŞİ DAĞILIMI LİSTESİ -->
+      <div class="sidebar-panel-view hidden" id="panelDistribution">
+        <div class="sidebar-top">
+          <div class="sidebar-title-row">
+            <h2>Kişi Bazlı Dağılım</h2>
+            <div class="sidebar-actions">
+              <button class="icon-btn-sm" id="btnNewGroupModal" title="Yeni Kişi / Grup Şablonu Ekle">
+                <i class="ph ph-user-plus"></i>
+              </button>
+              <button class="icon-btn-sm" id="btnCopyAllSummary" title="Tüm Dağılım Metnini WhatsApp İçin Kopyala">
+                <i class="ph ph-copy"></i>
+              </button>
+              <button class="icon-btn-sm" id="btnHistoryModal" title="Geçmiş Maç Dağılımları">
+                <i class="ph ph-clock-counter-clockwise"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="sidebar-search-box">
+            <i class="ph ph-magnifying-glass search-ico"></i>
+            <input
+              type="text"
+              id="inputSearchGroups"
+              placeholder="Kişi, grup veya koltuk ara..."
+              class="sidebar-search-input"
+            />
+          </div>
+        </div>
+
+        <div class="sidebar-list" id="groupsSummaryList"></div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ========================================================= -->
+  <!-- MODALLAR                                                  -->
+  <!-- ========================================================= -->
+
+  <!-- MODAL: YENİ MAÇ OLUŞTUR / YÜKLE -->
+  <div class="modal-backdrop hidden" id="newMatchModalBackdrop">
+    <div class="modal-dialog">
+      <div class="modal-head">
+        <h3>Yeni Maç Oluştur veya Bilet Yükle</h3>
+        <button class="icon-btn-ghost" id="btnCloseNewMatchModal"><i class="ph ph-x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <label class="form-label">Sultanlar Ligi / Kupa Rakipleri (Hızlı Seçim)</label>
+          <div class="preset-opponent-chips" id="opponentPresets">
+            <button type="button" class="preset-btn" data-opp="VakıfBank">VakıfBank</button>
+            <button type="button" class="preset-btn" data-opp="Eczacıbaşı Dynavit">Eczacıbaşı</button>
+            <button type="button" class="preset-btn" data-opp="Galatasaray Daikin">Galatasaray</button>
+            <button type="button" class="preset-btn" data-opp="Türk Hava Yolları">THY</button>
+            <button type="button" class="preset-btn" data-opp="Fenerbahçe Medicana">Fenerbahçe</button>
+            <button type="button" class="preset-btn" data-opp="Kuzeyboru">Kuzeyboru</button>
+            <button type="button" class="preset-btn" data-opp="Aydın BŞB">Aydın BŞB</button>
+            <button type="button" class="preset-btn" data-opp="Nilüfer Belediyespor">Nilüfer Bld.</button>
+            <button type="button" class="preset-btn" data-opp="Bahçelievler Bld.">Bahçelievler</button>
+            <button type="button" class="preset-btn" data-opp="Aras Kargo">Aras Kargo</button>
+            <button type="button" class="preset-btn" data-opp="SigortaShop">SigortaShop</button>
+            <button type="button" class="preset-btn" data-opp="Beşiktaş">Beşiktaş</button>
+          </div>
+        </div>
+
+        <div class="form-row-2">
+          <div class="form-section">
+            <label class="form-label">Maç Adı</label>
+            <input type="text" id="inputNewMatchName" class="form-input" placeholder="Örn: Zeren Spor - VakıfBank" />
+          </div>
+          <div class="form-section">
+            <label class="form-label">Tarih / Saat</label>
+            <input type="text" id="inputNewMatchDate" class="form-input" placeholder="Örn: 25.10.2026 15:00" />
+          </div>
+        </div>
+
+        <div class="match-create-cards">
+          <div class="option-box">
+            <h4>1. Yeni / Boş Maç Planlaması Başlat</h4>
+            <p>PDF'ler henüz gelmeden önce tüm 30 blok üzerinde koltukları planlayabilirsiniz.</p>
+            <input type="text" id="inputNewMatchFolder" class="form-input" placeholder="Varsa klasör yolu (Boş bırakırsanız otomatik açılır)" style="margin-top:6px; margin-bottom:8px;" />
+            <button class="btn btn-primary btn-sm" id="btnCreateEmptyOrFolderMatch">Boş Maç Oluştur</button>
+          </div>
+
+          <div class="option-box">
+            <h4>2. Biletinial / WeTransfer ZIP Yükle</h4>
+            <p>İndirdiğiniz bilet ZIP dosyasını seçin, otomatik klasöre açılıp taranır.</p>
+            <div style="display:flex; gap:8px; align-items:center; margin-top:8px;">
+              <input type="file" id="inputMatchZipFile" accept=".zip" class="form-input" style="padding:4px;" />
+              <button class="btn btn-secondary btn-sm" id="btnUploadMatchZip">ZIP Yükle</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ORİJİNAL ŞEMA GÖRSELİ -->
+  <div class="modal-backdrop hidden" id="imageModalBackdrop">
+    <div class="modal-dialog modal-dialog-lg">
+      <div class="modal-head">
+        <h3 id="imageModalTitle">Orijinal Şema</h3>
+        <button class="icon-btn-ghost" id="btnCloseImageModal"><i class="ph ph-x"></i></button>
+      </div>
+      <div class="modal-body modal-image-body">
+        <img id="imageModalImg" src="" alt="Tribün Planı" />
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: GEÇMİŞ MAÇLAR -->
+  <div class="modal-backdrop hidden" id="historyModalBackdrop">
+    <div class="modal-dialog">
+      <div class="modal-head">
+        <h3>Geçmiş Maç Arşivi</h3>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button class="btn btn-primary btn-xs" id="btnSaveCurrentToHistory">Bu Maçı Arşivle</button>
+          <button class="icon-btn-ghost" id="btnCloseHistoryModal"><i class="ph ph-x"></i></button>
+        </div>
+      </div>
+      <div class="modal-body" id="historyModalContent"></div>
+    </div>
+  </div>
+
+  <!-- MODAL: YENİ KİŞİ / GRUP EKLE -->
+  <div class="modal-backdrop hidden" id="newGroupModalBackdrop">
+    <div class="modal-dialog modal-dialog-sm">
+      <div class="modal-head">
+        <h3>Yeni Kişi / Grup Şablonu</h3>
+        <button class="icon-btn-ghost" id="btnCloseNewGroupModal"><i class="ph ph-x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="form-section">
+          <label class="form-label">Kişi / Grup Adı</label>
+          <input type="text" id="newGroupName" class="form-input" placeholder="Örn: beyza, protokol" />
+        </div>
+        <div class="form-section">
+          <label class="form-label">Alt Grup (İsteğe Bağlı)</label>
+          <input type="text" id="newSubgroupName" class="form-input" placeholder="Örn: misafir" />
+        </div>
+        <div class="form-section">
+          <label class="form-label">Renk</label>
+          <input type="color" id="newGroupColor" value="#2563EB" class="form-color-picker" />
+        </div>
+        <div style="display:flex; justify-content:flex-end; margin-top:12px;">
+          <button class="btn btn-primary btn-sm" id="btnSaveGroupTemplate">Kaydet</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: YÖNETİCİ ŞİFRESİ DEĞİŞTİR -->
+  <div class="modal-backdrop hidden" id="changePasswordModalBackdrop">
+    <div class="modal-dialog modal-dialog-sm">
+      <div class="modal-head">
+        <h3 style="display:flex; align-items:center; gap:8px;">
+          <i class="ph-bold ph-key"></i>
+          <span>Yönetici Şifresini Değiştir</span>
+        </h3>
+        <button class="icon-btn-ghost" id="btnCloseChangePwdModal"><i class="ph ph-x"></i></button>
+      </div>
+      <form class="modal-body" id="formChangePassword" onsubmit="event.preventDefault(); handleChangePasswordSubmit();">
+        <div class="form-section">
+          <label class="form-label">Mevcut Şifre</label>
+          <input type="password" id="inputCurrentPassword" class="form-input" placeholder="Mevcut şifreniz" required />
+        </div>
+        <div class="form-section">
+          <label class="form-label">Yeni Şifre</label>
+          <input type="password" id="inputNewPassword" class="form-input" placeholder="Yeni şifreniz (en az 4 karakter)" required minlength="4" />
+        </div>
+        <div class="form-section">
+          <label class="form-label">Yeni Şifre (Tekrar)</label>
+          <input type="password" id="inputNewPasswordConfirm" class="form-input" placeholder="Yeni şifreyi tekrar yazın" required minlength="4" />
+        </div>
+        <div id="changePwdErrorMsg" class="login-error-msg hidden" style="margin-top:8px;"></div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btnCancelChangePwd">İptal</button>
+          <button type="submit" class="btn btn-primary btn-sm" id="btnSaveNewPassword">Şifreyi Güncelle</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: BİLETİNİAL BİLETLERİNİ YÜKLE / GÖM -->
+  <div class="modal-backdrop hidden" id="uploadTicketsModalBackdrop">
+    <div class="modal-dialog">
+      <div class="modal-head">
+        <h3 style="display:flex; align-items:center; gap:8px;">
+          <i class="ph-bold ph-upload-simple" style="color:var(--brand-purple-light);"></i>
+          <span>Biletinial Biletlerini Yükle</span>
+        </h3>
+        <button class="icon-btn-ghost" id="btnCloseUploadTicketsModal"><i class="ph ph-x"></i></button>
+      </div>
+      <div class="modal-body">
+        <div class="upload-dropzone" id="ticketDropzone">
+          <i class="ph-bold ph-file-arrow-up dropzone-icon"></i>
+          <h4>Biletinial ZIP veya PDF Biletlerini Sürükleyin</h4>
+          <p>WeTransfer veya Biletinial'dan indirdiğiniz <strong>.zip</strong> dosyasını ya da toplu <strong>.pdf</strong> biletleri buraya bırakın.</p>
+          <label class="btn btn-primary btn-sm dropzone-btn">
+            <i class="ph-bold ph-folder-open"></i>
+            <span>Dosya(lar) Seçin</span>
+            <input type="file" id="inputTicketFiles" multiple accept=".pdf,.zip" style="display:none;" />
+          </label>
+        </div>
+        <div id="uploadStatusBox" class="upload-status-box hidden">
+          <div class="upload-spinner-wrap">
+            <i class="ph ph-spinner spin"></i>
+            <span id="uploadStatusText">Biletler işleniyor ve sisteme gömülüyor...</span>
+          </div>
+        </div>
+        <div class="modal-info-note" style="margin-top:12px;">
+          <i class="ph ph-info"></i>
+          <span>Yüklenen biletler doğrudan aktif maça (<strong id="uploadTargetMatchName">Zeren Spor - Kuzeyboru</strong>) eklenecek ve blok/koltuk eşleştirmesi için hazır hale gelecektir.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: WHATSAPP BİLET DAĞITIM MERKEZİ -->
+  <div class="modal-backdrop hidden" id="whatsappDispatchModalBackdrop">
+    <div class="modal-dialog modal-dialog-lg" style="max-width:960px;">
+      <div class="modal-head">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="whatsapp-head-icon">
+            <i class="ph-bold ph-whatsapp-logo"></i>
+          </div>
+          <div>
+            <h3 style="margin:0; font-size:16px;">WhatsApp Bilet Dağıtım Merkezi</h3>
+            <span style="font-size:12px; color:var(--text-muted);" id="dispatchMatchTitle">Zeren Spor Kulübü - Kuzeyboru</span>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button class="btn btn-portal-copy btn-xs" id="btnCopyPortalUrlDispatch" title="WhatsApp üzerinden personele göndermek için biletistiyorum.vercel.app linkini kopyala">
+            <i class="ph-bold ph-globe"></i>
+            <span>Talep Linki</span>
+          </button>
+          <button class="btn btn-secondary btn-xs" id="btnExportDispatchZip" title="Tüm biletleri kişi adlarıyla klasörlenmiş tek ZIP olarak indir">
+            <i class="ph-bold ph-package"></i>
+            <span>Tümünü ZIP İndir</span>
+          </button>
+          <button class="icon-btn-ghost" id="btnCloseDispatchModal"><i class="ph ph-x"></i></button>
+        </div>
+      </div>
+
+      <div class="modal-body" style="padding:16px; overflow-y:auto; max-height:calc(85vh - 120px);">
+        <!-- Özet İstatistik Kartları -->
+        <div class="dispatch-stats-bar">
+          <div class="dispatch-stat-card">
+            <span class="d-stat-label">Toplam Kişi</span>
+            <strong class="d-stat-val" id="dispatchTotalPersons">0</strong>
+          </div>
+          <div class="dispatch-stat-card">
+            <span class="d-stat-label">Dağıtılacak Bilet</span>
+            <strong class="d-stat-val" id="dispatchTotalTickets">0</strong>
+          </div>
+          <div class="dispatch-stat-card dispatch-stat-success">
+            <span class="d-stat-label">Gönderilen</span>
+            <strong class="d-stat-val" id="dispatchSentCount">0</strong>
+          </div>
+          <div class="dispatch-stat-card dispatch-stat-warning">
+            <span class="d-stat-label">Bekleyen</span>
+            <strong class="d-stat-val" id="dispatchPendingCount">0</strong>
+          </div>
+          <div class="dispatch-progress-box">
+            <div style="display:flex; justify-content:space-between; font-size:11.5px; font-weight:700; color:var(--text-muted); margin-bottom:4px;">
+              <span>İlerleme</span>
+              <span id="dispatchProgressText">%0</span>
+            </div>
+            <div class="dispatch-progress-track">
+              <div class="dispatch-progress-fill" id="dispatchProgressFill" style="width:0%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Filtre & Arama Satırı -->
+        <div class="dispatch-controls-row">
+          <div class="dispatch-filter-chips">
+            <button class="d-chip active" data-filter="all" id="btnFilterDispatchAll">Tümü (<span id="cntAll">0</span>)</button>
+            <button class="d-chip" data-filter="pending" id="btnFilterDispatchPending">Bekleyenler ⏳ (<span id="cntPending">0</span>)</button>
+            <button class="d-chip" data-filter="sent" id="btnFilterDispatchSent">Gönderilenler ✅ (<span id="cntSent">0</span>)</button>
+          </div>
+          <div class="sidebar-search-box" style="flex:1; max-width:320px;">
+            <i class="ph ph-magnifying-glass search-ico"></i>
+            <input
+              type="text"
+              id="inputSearchDispatch"
+              placeholder="Kişi, telefon veya blok ara..."
+              class="sidebar-search-input"
+            />
+          </div>
+        </div>
+
+        <!-- Dağıtım Tablosu / Listesi -->
+        <div class="dispatch-table-wrap">
+          <div id="dispatchListEmpty" class="dispatch-empty-state hidden">
+            <i class="ph-bold ph-ticket" style="font-size:36px; color:#cbd5e1;"></i>
+            <p>Bu filtreye uygun dağıtılacak bilet kaydı bulunamadı.</p>
+          </div>
+          <div id="dispatchRecipientsList" class="dispatch-recipients-grid"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST BİLDİRİMİ -->
+  <div id="toastContainer" class="toast-stack"></div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
