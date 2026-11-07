@@ -1223,6 +1223,7 @@ function renderExcelPanel() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               group: r.person,
+              request_id: r.request_id || "",
               seat_keys: r.matched_keys || [],
             }),
           });
@@ -1287,27 +1288,32 @@ async function handleExcelAssignClick(req) {
 
   if (selectedSeats.size > 0) {
     const chosenList = Array.from(selectedSeats);
-    // Kullanıcı tabloda koltuk seçmişse direkt seçilenleri ata
-    await assignSelectedSeats(req.suggested_group, req.suggested_subgroup);
-    if (req.request_id && req.request_id.startsWith("ZEREN-")) {
-      try {
-        await fetch("/api/excel/assign-request", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            request_id: req.request_id,
-            block_id: targetB,
-            count: chosenList.length,
-            group: req.suggested_group,
-            subgroup: req.suggested_subgroup,
-            seat_ids: chosenList,
-          }),
-        });
-      } catch (err) {
-        console.error("Portal güncelleme hatası:", err);
+    const assignBlock = currentBlockId || targetB;
+    selectedSeats.clear();
+    try {
+      const res = await fetch("/api/excel/assign-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          request_id: req.request_id,
+          block_id: assignBlock,
+          count: chosenList.length,
+          group: req.suggested_group,
+          subgroup: req.suggested_subgroup,
+          seat_ids: chosenList,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.detail || "Atama yapılamadı");
       }
+      const data = await res.json();
+      updateAppState(data);
+      await fetchExcelSummary();
+      showToast(`✅ ${req.person} talebine ${chosenList.length} koltuk atandı.`);
+    } catch (err) {
+      showToast(`Hata: ${err.message}`);
     }
-    await fetchExcelSummary();
   } else {
     // Koltuk seçilmemişse otomatik olarak boş koltuk bul ve ata
     const needed = req.requested_count - req.assigned_count;

@@ -2493,6 +2493,7 @@ def api_portal_download_tickets(request_id: str):
 class UnassignGroupPayload(BaseModel):
     group: Optional[str] = ""
     subgroup: Optional[str] = ""
+    request_id: Optional[str] = ""
     seat_keys: Optional[List[str]] = []
 
 
@@ -2505,6 +2506,7 @@ def api_unassign_group(payload: UnassignGroupPayload):
     folder = state_mgr.active_folder
     group_clean = (payload.group or "").strip()
     subgroup_clean = (payload.subgroup or "").strip()
+    request_id = (payload.request_id or "").strip()
     seat_keys = payload.seat_keys or []
 
     plan_data = load_match_plan(folder)
@@ -2513,7 +2515,7 @@ def api_unassign_group(payload: UnassignGroupPayload):
 
     changed = False
 
-    # 1. Eğer doğrudan seat_keys verilmişse
+    # 1. Eğer doğrudan seat_keys verilmişse sadece o koltukları boşa çıkar
     if seat_keys:
         for key in seat_keys:
             if key in virtual_map:
@@ -2523,9 +2525,18 @@ def api_unassign_group(payload: UnassignGroupPayload):
             if src_path and src_path.exists() and src_path.parent.resolve() != folder.resolve():
                 dst_path = folder / src_path.name
                 shutil.move(str(src_path), str(dst_path))
-
-    # 2. Grup adına göre eşleşen sanal atamaları sil
-    if group_clean:
+        cleanup_empty_dirs(folder)
+        if request_id:
+            update_request_fulfillment(
+                request_id=request_id,
+                status="pending",
+                assigned_block="",
+                assigned_seats=[],
+                group=group_clean,
+                subgroup=subgroup_clean,
+            )
+    # 2. seat_keys verilmemişse ve grup adı verilmişse tüm grubu boşa çıkar
+    elif group_clean:
         g_low = group_clean.lower()
         sg_low = subgroup_clean.lower() if subgroup_clean else ""
         keys_to_del = []
@@ -2562,13 +2573,15 @@ def api_portal_delete_request(request_id: str):
     if not target:
         raise HTTPException(status_code=404, detail="Talep bulunamadı.")
 
-    # Bu talebe atanmış koltuklar varsa, onları da otomatik boşa çıkar
+    # Sadece bu talebe atanmış koltukları boşa çıkar (aynı kişinin diğer taleplerine dokunma)
     folder = state_mgr.active_folder
     plan_data = load_match_plan(folder)
     virtual_map = plan_data.setdefault("virtual_assignments", {})
+    path_map = _find_ticket_path_map(folder)
     assigned_seats = target.get("assigned_seats", [])
     target_block = target.get("assigned_block", target.get("target_block", "121"))
-    person = target.get("person", "")
+    if str(target_block).lower() in ("saha", "saha içi", "saha ici", "saha_ici", "si"):
+        target_block = "SAHA"
 
     changed = False
     for s in assigned_seats:
@@ -2576,29 +2589,17 @@ def api_portal_delete_request(request_id: str):
         if key in virtual_map:
             virtual_map.pop(key, None)
             changed = True
+        src_path = path_map.get(key)
+        if src_path and src_path.exists() and src_path.parent.resolve() != folder.resolve():
+            dst_path = folder / src_path.name
+            shutil.move(str(src_path), str(dst_path))
 
-    if person:
-        p_clean = person.strip().lower()
-        keys_to_remove = [
-            k for k, v in virtual_map.items()
-            if (v.get("group") or "").strip().lower() == p_clean
-            or normalize_text(v.get("group") or "") == normalize_text(p_clean)
-        ]
-        for k in keys_to_remove:
-            virtual_map.pop(k, None)
-            changed = True
-
-        p_dir = folder / person
-        if p_dir.exists() and p_dir.is_dir():
-            for f in p_dir.rglob("*.pdf"):
-                dst = folder / f.name
-                shutil.move(str(f), str(dst))
-            cleanup_empty_dirs(folder)
+    cleanup_empty_dirs(folder)
 
     if changed:
         save_match_plan(folder, plan_data)
 
-    return {"success": True, "message": "Talep ve koltuk atamaları silindi."}
+    return {"success": True, "message": "Talep ve bu talebe ait koltuk atamaları silindi."}
 
 
 @app.post("/api/portal/requests/clear-all")

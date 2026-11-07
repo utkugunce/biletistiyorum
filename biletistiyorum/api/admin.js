@@ -453,17 +453,85 @@ export default async function handler(req, res) {
     const seats = body.seats || [];
     const grp = String(body.group || "").trim();
     const sub = String(body.subgroup || "").trim();
+    const reqId = String(body.request_id || "").trim();
     sysState.virtual_assignments = sysState.virtual_assignments || {};
+
+    const newlyAssignedByBlock = {};
+    const unassignedSeats = new Set();
 
     for (const s of seats) {
       const key = `${s.block}:${s.row}-${s.seat}`;
       if (grp) {
-        sysState.virtual_assignments[key] = { group: grp, subgroup: sub };
+        sysState.virtual_assignments[key] = {
+          group: grp,
+          subgroup: sub,
+          request_id: reqId || undefined
+        };
+        if (!newlyAssignedByBlock[s.block]) newlyAssignedByBlock[s.block] = [];
+        newlyAssignedByBlock[s.block].push(`${s.row}-${s.seat}`);
       } else {
         delete sysState.virtual_assignments[key];
+        unassignedSeats.add(key);
       }
     }
     await saveSystemState(sysState);
+
+    // Eğer koltuklar boşa çıkarıldıysa ilgili portal taleplerinden de düş
+    if (unassignedSeats.size > 0) {
+      const portalReqs = await loadPortalRequests();
+      for (const pr of portalReqs) {
+        if (!Array.isArray(pr.assigned_seats) || pr.assigned_seats.length === 0) continue;
+        let bId = String(pr.assigned_block || pr.target_block || "102").trim();
+        if (bId.toLowerCase().includes("saha")) bId = "SAHA";
+        const remaining = pr.assigned_seats.filter((sid) => !unassignedSeats.has(`${bId}:${sid}`));
+        if (remaining.length !== pr.assigned_seats.length) {
+          await fetch(`${SUPABASE_URL}/rest/v1/portal_requests?id=eq.${encodeURIComponent(pr.id)}`, {
+            method: "PATCH",
+            headers: sbHeaders({ Prefer: "return=minimal" }),
+            body: JSON.stringify({
+              status: remaining.length > 0 ? "assigned" : "pending",
+              assigned_seats: remaining
+            })
+          });
+        }
+      }
+    } else if (grp && !reqId) {
+      // Alt çubuktan (dock) doğrudan bir personele koltuk atandıysa ve o blokta bekleyen/eksik talebi varsa otomatik bağla
+      const portalReqs = await loadPortalRequests();
+      // Kronolojik sırala (eskiden yeniye)
+      const chronological = [...portalReqs].reverse();
+      for (const [bId, sids] of Object.entries(newlyAssignedByBlock)) {
+        const matchingReq = chronological.find((pr) => {
+          if (normalizeName(pr.person) !== normalizeName(grp)) return false;
+          let prBlock = String(pr.assigned_block || pr.target_block || "102").trim();
+          if (prBlock.toLowerCase().includes("saha")) prBlock = "SAHA";
+          if (prBlock !== bId) return false;
+          const curSeats = Array.isArray(pr.assigned_seats) ? pr.assigned_seats : [];
+          const reqC = parseInt(pr.requested_count || 1, 10);
+          return curSeats.length < reqC;
+        });
+        if (matchingReq) {
+          const curSeats = Array.isArray(matchingReq.assigned_seats) ? matchingReq.assigned_seats : [];
+          const merged = Array.from(new Set([...curSeats, ...sids]));
+          for (const sid of sids) {
+            if (sysState.virtual_assignments[`${bId}:${sid}`]) {
+              sysState.virtual_assignments[`${bId}:${sid}`].request_id = matchingReq.id;
+            }
+          }
+          await saveSystemState(sysState);
+          await fetch(`${SUPABASE_URL}/rest/v1/portal_requests?id=eq.${encodeURIComponent(matchingReq.id)}`, {
+            method: "PATCH",
+            headers: sbHeaders({ Prefer: "return=minimal" }),
+            body: JSON.stringify({
+              status: "assigned",
+              assigned_block: bId,
+              assigned_seats: merged
+            })
+          });
+        }
+      }
+    }
+
     return res.status(200).json(buildFullState(baseData.base_state, sysState));
   }
 
@@ -471,13 +539,17 @@ export default async function handler(req, res) {
   if (pathname === "/api/groups/unassign" && req.method === "POST") {
     const grp = String(body.group || "").trim().toLowerCase();
     const sub = String(body.subgroup || "").trim().toLowerCase();
+    const reqId = String(body.request_id || "").trim();
     const seatKeys = body.seat_keys || [];
     sysState.virtual_assignments = sysState.virtual_assignments || {};
 
-    for (const k of seatKeys) {
-      delete sysState.virtual_assignments[k];
-    }
-    if (grp) {
+    if (seatKeys.length > 0) {
+      // Sadece belirtilen koltukları (örn. tek bir talebin koltuklarını) boşa çıkar
+      for (const k of seatKeys) {
+        delete sysState.virtual_assignments[k];
+      }
+    } else if (grp) {
+      // Sağdaki Dağılım listesinden tüm grubu boşa çıkar
       for (const [k, v] of Object.entries(sysState.virtual_assignments)) {
         const vg = String(v.group || "").trim().toLowerCase();
         const vs = String(v.subgroup || "").trim().toLowerCase();
@@ -489,6 +561,33 @@ export default async function handler(req, res) {
       }
     }
     await saveSystemState(sysState);
+
+    if (reqId) {
+      await fetch(`${SUPABASE_URL}/rest/v1/portal_requests?id=eq.${encodeURIComponent(reqId)}`, {
+        method: "PATCH",
+        headers: sbHeaders({ Prefer: "return=minimal" }),
+        body: JSON.stringify({
+          status: "pending",
+          assigned_seats: []
+        })
+      });
+    } else if (grp && seatKeys.length === 0) {
+      // Tüm grup boşa çıkarıldıysa o kişinin tüm taleplerini sıfırla
+      const portalReqs = await loadPortalRequests();
+      for (const pr of portalReqs) {
+        if (normalizeName(pr.person) === normalizeName(grp)) {
+          await fetch(`${SUPABASE_URL}/rest/v1/portal_requests?id=eq.${encodeURIComponent(pr.id)}`, {
+            method: "PATCH",
+            headers: sbHeaders({ Prefer: "return=minimal" }),
+            body: JSON.stringify({
+              status: "pending",
+              assigned_seats: []
+            })
+          });
+        }
+      }
+    }
+
     return res.status(200).json(buildFullState(baseData.base_state, sysState));
   }
 
@@ -513,22 +612,45 @@ export default async function handler(req, res) {
     const portalReqs = await loadPortalRequests();
     const vMap = sysState.virtual_assignments || {};
 
+    // Her talebi kendi atanan koltuklarıyla bağımsız değerlendir
     const evaluated = portalReqs.map((pr) => {
       const person = pr.person || "";
       const phone = pr.phone || lookupPhone(person, phonebook);
       const reqCount = parseInt(pr.requested_count || 1, 10);
       const targetBlock = pr.target_block || "121";
+      let normBlock = String(pr.assigned_block || targetBlock || "121").trim();
+      if (normBlock.toLowerCase().includes("saha")) normBlock = "SAHA";
 
-      // Find seats assigned to this person or in pr.assigned_seats
-      const matchedSeats = [];
-      const matchedKeys = [];
+      // 1. Öncelikle bu talebin kendi assigned_seats listesini veya request_id ile eşleşen koltukları al
+      let matchedSeats = [];
+      let matchedKeys = [];
+
+      // virtual_assignments içinde doğrudan bu request_id'ye bağlı koltuklar var mı?
       for (const [k, v] of Object.entries(vMap)) {
-        if (normalizeName(v.group) === normalizeName(person)) {
+        if (v && v.request_id === pr.id) {
           const [bId, sid] = k.split(":");
-          matchedKeys.push(k);
-          matchedSeats.push(sid);
+          if (!matchedKeys.includes(k)) {
+            matchedKeys.push(k);
+            matchedSeats.push(sid);
+          }
         }
       }
+
+      // Ayrıca pr.assigned_seats içinde kayıtlı olan ve hala virtual_assignments'ta bu kişide duran koltukları ekle
+      if (Array.isArray(pr.assigned_seats) && pr.assigned_seats.length > 0) {
+        for (const sid of pr.assigned_seats) {
+          const k = `${normBlock}:${sid}`;
+          const v = vMap[k];
+          // Eğer koltuk hala bu kişiye aitse (ve başka bir request_id'ye özel atanmamışsa)
+          if (v && normalizeName(v.group) === normalizeName(person) && (!v.request_id || v.request_id === pr.id)) {
+            if (!matchedKeys.includes(k)) {
+              matchedKeys.push(k);
+              matchedSeats.push(sid);
+            }
+          }
+        }
+      }
+
       const asgCount = matchedSeats.length;
       const isComp = asgCount >= reqCount && reqCount > 0;
       const isPart = asgCount > 0 && !isComp;
@@ -592,6 +714,20 @@ export default async function handler(req, res) {
       return res.status(400).json({ detail: `${targetBlock} bloğu bulunamadı.` });
     }
 
+    // Eğer bu talebe daha önce kısmi koltuk atanmışsa onları koru ve üstüne tamamla
+    let existingSids = [];
+    if (body.request_id) {
+      const portalReqs = await loadPortalRequests();
+      const targetReq = portalReqs.find((r) => r.id === body.request_id);
+      if (targetReq && Array.isArray(targetReq.assigned_seats)) {
+        const vMap = sysState.virtual_assignments || {};
+        existingSids = targetReq.assigned_seats.filter((sid) => {
+          const v = vMap[`${targetBlock}:${sid}`];
+          return v && normalizeName(v.group) === normalizeName(body.group || targetReq.person);
+        });
+      }
+    }
+
     let pickedSeats = [];
     if (Array.isArray(body.seat_ids) && body.seat_ids.length > 0) {
       pickedSeats = body.seat_ids.map((sid) => {
@@ -602,19 +738,27 @@ export default async function handler(req, res) {
       pickedSeats = autoPickSeats(blockObj, parseInt(body.count || 1, 10));
     }
 
-    if (pickedSeats.length === 0) {
+    if (pickedSeats.length === 0 && existingSids.length === 0) {
       return res.status(400).json({ detail: `${targetBlock} bloğunda boş koltuk bulunamadı.` });
     }
 
     sysState.virtual_assignments = sysState.virtual_assignments || {};
-    const assignedSids = [];
+    const newSids = [];
     for (const s of pickedSeats) {
       const sid = `${s.row}-${s.seat}`;
-      assignedSids.push(sid);
+      newSids.push(sid);
       sysState.virtual_assignments[`${s.block}:${sid}`] = {
         group: String(body.group || "").trim(),
-        subgroup: String(body.subgroup || "").trim()
+        subgroup: String(body.subgroup || "").trim(),
+        request_id: body.request_id || undefined
       };
+    }
+    const finalSids = Array.from(new Set([...existingSids, ...newSids]));
+    // Mevcut koltuklara da request_id etiketini işle
+    for (const sid of finalSids) {
+      if (sysState.virtual_assignments[`${targetBlock}:${sid}`] && body.request_id) {
+        sysState.virtual_assignments[`${targetBlock}:${sid}`].request_id = body.request_id;
+      }
     }
     await saveSystemState(sysState);
 
@@ -625,7 +769,7 @@ export default async function handler(req, res) {
         body: JSON.stringify({
           status: "assigned",
           assigned_block: targetBlock,
-          assigned_seats: assignedSids
+          assigned_seats: finalSids
         })
       });
     }
@@ -646,24 +790,28 @@ export default async function handler(req, res) {
       let targetBlock = pr.target_block || "102";
       if (targetBlock.toLowerCase().includes("saha")) targetBlock = "SAHA";
 
-      // Check existing assigned seats for this person
-      const existing = Object.entries(sysState.virtual_assignments).filter(
-        ([, v]) => normalizeName(v.group) === normalizeName(person)
-      );
-      const needed = reqCount - existing.length;
+      // Sadece bu talebe ait mevcut koltukları kontrol et
+      const curAssigned = Array.isArray(pr.assigned_seats)
+        ? pr.assigned_seats.filter((sid) => {
+            const v = sysState.virtual_assignments[`${targetBlock}:${sid}`];
+            return v && normalizeName(v.group) === normalizeName(person);
+          })
+        : [];
+      const needed = reqCount - curAssigned.length;
       if (needed <= 0) continue;
 
       const tempState = buildFullState(baseData.base_state, sysState);
       const blockObj = tempState.blocks[targetBlock] || tempState.blocks["121"];
       const picked = autoPickSeats(blockObj, needed);
       if (picked.length > 0) {
-        const sids = [];
+        const sids = [...curAssigned];
         for (const s of picked) {
           const sid = `${s.row}-${s.seat}`;
-          sids.push(sid);
+          if (!sids.includes(sid)) sids.push(sid);
           sysState.virtual_assignments[`${s.block}:${sid}`] = {
             group: person,
-            subgroup: pr.department || ""
+            subgroup: pr.department || "",
+            request_id: pr.id
           };
         }
         assignedReqsCount++;
@@ -795,22 +943,28 @@ export default async function handler(req, res) {
     const parts = pathname.split("/").filter(Boolean);
     const reqId = decodeURIComponent(parts[3] || "");
     if (reqId) {
-      // Find request to get person name
       const portalReqs = await loadPortalRequests();
       const target = portalReqs.find((r) => r.id === reqId);
       await fetch(`${SUPABASE_URL}/rest/v1/portal_requests?id=eq.${encodeURIComponent(reqId)}`, {
         method: "DELETE",
         headers: sbHeaders()
       });
-      if (target && target.person && sysState.virtual_assignments) {
+      if (target && sysState.virtual_assignments) {
+        let bId = String(target.assigned_block || target.target_block || "102").trim();
+        if (bId.toLowerCase().includes("saha")) bId = "SAHA";
+        const seatsToRemove = Array.isArray(target.assigned_seats) ? target.assigned_seats : [];
+        // Sadece bu talebe ait koltukları sil (aynı kişinin diğer taleplerine dokunma)
+        for (const sid of seatsToRemove) {
+          delete sysState.virtual_assignments[`${bId}:${sid}`];
+        }
         for (const [k, v] of Object.entries(sysState.virtual_assignments)) {
-          if (normalizeName(v.group) === normalizeName(target.person)) {
+          if (v && v.request_id === reqId) {
             delete sysState.virtual_assignments[k];
           }
         }
         await saveSystemState(sysState);
       }
-      return res.status(200).json({ success: true, message: "Talep ve koltuk atamaları silindi." });
+      return res.status(200).json({ success: true, message: "Talep ve bu talebe ait koltuk atamaları silindi." });
     }
   }
 
