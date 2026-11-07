@@ -1323,6 +1323,7 @@ def api_dispatch_list():
 
         recipients.append({
             "id": pr["id"],
+            "request_id": pr["id"],
             "source": "portal",
             "person": person,
             "department": pr.get("department", ""),
@@ -1915,11 +1916,12 @@ def api_save_history():
 
 
 @app.api_route("/api/open-explorer", methods=["GET", "POST"])
-def api_open_explorer(group: str = "", subgroup: str = "", req: Optional[OpenExplorerRequest] = None):
+def api_open_explorer(group: str = "", subgroup: str = "", request_id: str = "", req: Optional[OpenExplorerRequest] = None):
     import subprocess
     from sync_helper import sync_cloud_assignments_to_folders
     grp = (req.group if req else "") or group
     sub = (req.subgroup if req else "") or subgroup
+    rid = request_id.strip()
 
     # Cloud atamalarını yerel Windows klasörlerine senkronize et
     try:
@@ -1937,13 +1939,15 @@ def api_open_explorer(group: str = "", subgroup: str = "", req: Optional[OpenExp
                 break
         if found_target:
             target = found_target
-            if sub:
-                sub_target = target / sub
-                if sub_target.exists():
-                    target = sub_target
+            if rid and (target / rid).exists():
+                target = target / rid
+            elif sub and (target / sub).exists():
+                target = target / sub
         else:
             target = state_mgr.active_folder / grp
-            if sub:
+            if rid:
+                target = target / rid
+            elif sub:
                 target = target / sub
 
     if not target.exists():

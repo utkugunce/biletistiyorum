@@ -2561,7 +2561,8 @@ async function handleDispatchSendWhatsApp(r, cardEl) {
   // 1. Windows Klasörünü Oluştur ve Aç (bulutta atanan biletler yerel klasöre ayrılır)
   try {
     const personName = r.person || "";
-    await fetch("http://127.0.0.1:8765/api/open-explorer?group=" + encodeURIComponent(personName), { mode: "no-cors" }).catch(() => {});
+    const reqId = r.request_id || r.id || "";
+    await fetch(`http://127.0.0.1:8765/api/open-explorer?group=${encodeURIComponent(personName)}&request_id=${encodeURIComponent(reqId)}`, { mode: "no-cors" }).catch(() => {});
   } catch (err) {
     console.log("Explorer açma isteği:", err);
   }
@@ -2590,13 +2591,44 @@ async function handleDispatchSendWhatsApp(r, cardEl) {
 }
 
 function handleQuickSendWhatsAppForRequest(req) {
-  const targetId = req.request_id || req.person;
-  const found = dispatchRecipients.find((x) => x.id === targetId || x.person === req.person);
-  if (found) {
-    handleDispatchSendWhatsApp(found, null);
-  } else {
-    openWhatsappDispatchModal();
-  }
+  // Sadece BU talebe ait koltuk ve biletleri ayrıştır
+  const seats = req.matched_seats || [];
+  const block = req.target_block || "102";
+  const isSaha = String(block).toUpperCase().includes("SAHA");
+  const bLabel = isSaha ? "Saha İçi" : `${block} Blok`;
+  const indTickets = (req.matched_keys || seats.map(s => `${block}:${s}`)).map(k => {
+    const parts = k.split(":");
+    const bId = parts[0];
+    const sid = parts[1] || "";
+    const [r, s] = sid.split("-");
+    const rLabel = bId.toUpperCase() === "SAHA" ? (r === "1" ? "A" : "B") : r;
+    return {
+      block: bId,
+      seat_id: sid,
+      label: `${bId.toUpperCase() === "SAHA" ? "Saha İçi" : bId + " Blok"} · S.${rLabel} K.${s}`,
+      filename: `ZEREN_SPOR_${bId.toUpperCase() === "SAHA" ? "SahaIci" : bId + "Blok"}_Sira${rLabel}_Koltuk${s}.pdf`,
+      download_url: `/tickets/${encodeURIComponent((window.TICKET_FILES && window.TICKET_FILES[k]) || `${bId}_${sid}.pdf`)}`,
+      has_pdf: true
+    };
+  });
+
+  const reqRecipient = {
+    id: req.request_id || req.person,
+    request_id: req.request_id || "",
+    person: req.person,
+    department: req.department || "",
+    phone: req.phone || "",
+    clean_phone: (req.phone || "").replace(/\D/g, ""),
+    block: block,
+    seats: seats,
+    seats_formatted: `${bLabel} (${seats.length} Bilet)`,
+    ticket_count: seats.length,
+    seat_count: seats.length,
+    whatsapp_sent: req.status === "assigned" && req.whatsapp_sent,
+    individual_tickets: indTickets
+  };
+
+  handleDispatchSendWhatsApp(reqRecipient, null);
 }
 
 async function triggerDownload(url, filename) {

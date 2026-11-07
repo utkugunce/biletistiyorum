@@ -27,10 +27,13 @@ def sync_cloud_assignments_to_folders(folder: Path):
     for key, v in virtual_map.items():
         grp = (v.get("group") or "").strip()
         sub = (v.get("subgroup") or "").strip()
+        req_id = (v.get("request_id") or "").strip()
         if not grp:
             continue
         target_dir = folder / grp
-        if sub:
+        if req_id:
+            target_dir = target_dir / req_id
+        elif sub:
             target_dir = target_dir / sub
         target_dir.mkdir(parents=True, exist_ok=True)
 
