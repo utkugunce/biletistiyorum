@@ -3382,3 +3382,33 @@ body {
   }
 }
 
+
+
+/* Gelişmiş Yatay Kaydırma Desteği: Üst Bar ve Blok Araç Çubuğu */
+.topbar {
+  overflow-x: auto !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(147, 51, 234, 0.3) transparent !important;
+}
+.topbar::-webkit-scrollbar {
+  display: block !important;
+  height: 4px !important;
+}
+.topbar::-webkit-scrollbar-thumb {
+  background: rgba(147, 51, 234, 0.25) !important;
+  border-radius: 4px !important;
+}
+
+.block-toolbar {
+  overflow-x: auto !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(147, 51, 234, 0.3) transparent !important;
+}
+.block-toolbar::-webkit-scrollbar {
+  display: block !important;
+  height: 4px !important;
+}
+.block-toolbar::-webkit-scrollbar-thumb {
+  background: rgba(147, 51, 234, 0.25) !important;
+  border-radius: 4px !important;
+}

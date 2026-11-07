@@ -2538,6 +2538,13 @@ def api_unassign_group(payload: UnassignGroupPayload):
     return scan_match_folder(folder)
 
 
+@app.post("/api/portal/request/{request_id}/update")
+def api_portal_update_request(request_id: str, payload: Dict[str, Any]):
+    from portal_storage import update_portal_request
+    res = update_portal_request(request_id, payload)
+    return {"success": True, "ok": True, "request": res}
+
+
 @app.delete("/api/portal/request/{request_id}")
 @app.post("/api/portal/request/{request_id}/delete")
 def api_portal_delete_request(request_id: str):

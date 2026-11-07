@@ -62,6 +62,7 @@ window.fetch = function(url, options = {}) {
 
 document.addEventListener("DOMContentLoaded", () => {
   bindUIEvents();
+  setupHorizontalScroll();
   bindAuthEvents();
   checkAuthAndInit();
   initLiveSync();
@@ -556,7 +557,15 @@ function renderBlockLegend(bInfo) {
         renderSeatingStage();
       });
       badge.addEventListener("click", () => {
-        selectSeatsByGroupInCurrentBlock(item.label === "Boşta" ? "" : item.label);
+        const targetLbl = item.label === "Boşta" ? "__UNASSIGNED__" : item.label;
+        if (highlightedLabel === targetLbl) {
+          highlightedLabel = null;
+          selectedSeats.clear();
+        } else {
+          highlightedLabel = targetLbl;
+          selectSeatsByGroupInCurrentBlock(item.label === "Boşta" ? "" : item.label);
+        }
+        renderSeatingStage();
       });
       bar.appendChild(badge);
     });
@@ -1188,7 +1197,11 @@ function renderExcelPanel() {
 
         ${
           isPortal
-            ? `<button class="excel-action-btn excel-action-btn-danger" data-act="delete-portal" title="Bu talebi sil">
+            ? `<button class="excel-action-btn" data-act="edit-portal" title="Bu talebi düzenle">
+                 <i class="ph ph-pencil-simple"></i>
+                 <span>Düzenle</span>
+               </button>
+               <button class="excel-action-btn excel-action-btn-danger" data-act="delete-portal" title="Bu talebi sil">
                  <i class="ph ph-trash"></i>
                  <span>Sil</span>
                </button>`
@@ -1198,6 +1211,14 @@ function renderExcelPanel() {
     `;
 
     // Buton aksiyonları
+    const btnEditPortal = card.querySelector('[data-act="edit-portal"]');
+    if (btnEditPortal) {
+      btnEditPortal.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openEditRequestModal(r);
+      });
+    }
+
     const btnDelPortal = card.querySelector('[data-act="delete-portal"]');
     if (btnDelPortal) {
       btnDelPortal.addEventListener("click", async (e) => {
@@ -1716,6 +1737,17 @@ function bindUIEvents() {
   document.getElementById("btnUndo").addEventListener("click", doUndo);
   document.getElementById("btnRedo").addEventListener("click", doRedo);
   document.getElementById("btnRefresh").addEventListener("click", () => fetchState(false));
+  const stageWrap = document.getElementById("seatingStageWrapper");
+  if (stageWrap) {
+    stageWrap.addEventListener("click", (e) => {
+      if (e.target === stageWrap || e.target.classList.contains("canvas-middle-row") || e.target.id === "seatingGrid") {
+        if (highlightedLabel) {
+          highlightedLabel = null;
+          renderSeatingStage();
+        }
+      }
+    });
+  }
 
   // Dışa Aktarımlar
   document.getElementById("btnExportAllZip").addEventListener("click", () => {
@@ -2671,5 +2703,76 @@ async function triggerDownload(url, filename) {
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+
+
+// Modal: Talebi Düzenle & Yatay Scroll Destekleri
+function openEditRequestModal(r) {
+  document.getElementById("editReqId").value = r.request_id || "";
+  document.getElementById("editReqPerson").value = r.person || "";
+  document.getElementById("editReqPhone").value = r.phone || "";
+  document.getElementById("editReqDept").value = r.department || "";
+  document.getElementById("editReqCount").value = r.requested_count || 1;
+  const blockSel = document.getElementById("editReqBlock");
+  if (blockSel) {
+    let b = String(r.target_block || "102").toUpperCase();
+    if (b.includes("SAHA")) b = "SAHA";
+    blockSel.value = b;
+  }
+  document.getElementById("editReqDesc").value = r.description || "";
+  document.getElementById("editRequestModalBackdrop").classList.remove("hidden");
+}
+
+async function handleEditRequestSubmit() {
+  const reqId = document.getElementById("editReqId").value;
+  if (!reqId) return;
+  const payload = {
+    person: document.getElementById("editReqPerson").value.trim(),
+    phone: document.getElementById("editReqPhone").value.trim(),
+    department: document.getElementById("editReqDept").value.trim(),
+    requested_count: parseInt(document.getElementById("editReqCount").value, 10) || 1,
+    target_block: document.getElementById("editReqBlock").value,
+    description: document.getElementById("editReqDesc").value.trim()
+  };
+
+  try {
+    const res = await fetch(`/api/portal/request/${encodeURIComponent(reqId)}/update`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      showToast("Talep başarıyla güncellendi.");
+      document.getElementById("editRequestModalBackdrop").classList.add("hidden");
+      fetchExcelSummary();
+      fetchState(false);
+    } else {
+      showToast("Talep güncellenemedi.");
+    }
+  } catch (err) {
+    showToast("Hata: " + err.message);
+  }
+}
+
+function setupHorizontalScroll() {
+  ["topbar", "block-toolbar"].forEach((cls) => {
+    const el = document.querySelector("." + cls);
+    if (!el) return;
+    el.addEventListener("wheel", (e) => {
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        el.scrollLeft += e.deltaY;
+      }
+    }, { passive: false });
+  });
+
+  const btnCloseEdit = document.getElementById("btnCloseEditRequestModal");
+  if (btnCloseEdit) btnCloseEdit.addEventListener("click", () => {
+    document.getElementById("editRequestModalBackdrop").classList.add("hidden");
+  });
+  const btnCancelEdit = document.getElementById("btnCancelEditRequest");
+  if (btnCancelEdit) btnCancelEdit.addEventListener("click", () => {
+    document.getElementById("editRequestModalBackdrop").classList.add("hidden");
   });
 }

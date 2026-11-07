@@ -673,6 +673,57 @@
     </div>
   </div>
 
+
+  <!-- MODAL: TALEBİ DÜZENLE -->
+  <div class="modal-backdrop hidden" id="editRequestModalBackdrop">
+    <div class="modal-dialog modal-dialog-sm">
+      <div class="modal-head">
+        <h3 style="display:flex; align-items:center; gap:8px;">
+          <i class="ph-bold ph-pencil-simple"></i>
+          <span>Talebi Düzenle</span>
+        </h3>
+        <button class="icon-btn-ghost" id="btnCloseEditRequestModal"><i class="ph ph-x"></i></button>
+      </div>
+      <form class="modal-body" id="formEditRequest" onsubmit="event.preventDefault(); handleEditRequestSubmit();">
+        <input type="hidden" id="editReqId" />
+        <div class="form-section">
+          <label class="form-label">Personel Adı Soyadı</label>
+          <input type="text" id="editReqPerson" class="form-input" required />
+        </div>
+        <div class="form-section">
+          <label class="form-label">Telefon Numarası</label>
+          <input type="tel" id="editReqPhone" class="form-input" placeholder="0532..." />
+        </div>
+        <div class="form-section">
+          <label class="form-label">Departman / Birim</label>
+          <input type="text" id="editReqDept" class="form-input" />
+        </div>
+        <div class="form-section" style="display:flex; gap:10px;">
+          <div style="flex:1;">
+            <label class="form-label">Talep Edilen Adet</label>
+            <input type="number" id="editReqCount" class="form-input" min="1" max="50" required />
+          </div>
+          <div style="flex:1;">
+            <label class="form-label">Hedef Blok</label>
+            <select id="editReqBlock" class="form-input">
+              <option value="102">102 Blok</option>
+              <option value="SAHA">Saha İçi VIP</option>
+              <option value="121">121 Blok</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-section">
+          <label class="form-label">Açıklama / Not</label>
+          <textarea id="editReqDesc" class="form-input" rows="2" style="resize:vertical;"></textarea>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btnCancelEditRequest">İptal</button>
+          <button type="submit" class="btn btn-primary btn-sm">Değişiklikleri Kaydet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- MODAL: YÖNETİCİ ŞİFRESİ DEĞİŞTİR -->
   <div class="modal-backdrop hidden" id="changePasswordModalBackdrop">
     <div class="modal-dialog modal-dialog-sm">

@@ -390,7 +390,7 @@ export default async function handler(req, res) {
     if (pwd === activePwd) {
       res.setHeader(
         "Set-Cookie",
-        `zeren_admin_token=${validToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`
+        `zeren_admin_token=${validToken}; Path=/; SameSite=Lax; Max-Age=31536000`
       );
       return res.status(200).json({ success: true, authenticated: true, token: validToken, message: "Giriş başarılı." });
     }
@@ -956,6 +956,32 @@ export default async function handler(req, res) {
       await saveSystemState(sysState);
     }
     return res.status(200).json({ success: true, ok: true, clean_phone: formatWaPhone(body.phone) });
+  }
+
+  // 11.9 POST /api/portal/request/{id}/update (Talebi Düzenle)
+  if (pathname.startsWith("/api/portal/request/") && pathname.endsWith("/update") && req.method === "POST") {
+    const parts = pathname.split("/").filter(Boolean);
+    const reqId = decodeURIComponent(parts[3] || "");
+    if (reqId) {
+      const updateData = {};
+      if (body.person !== undefined) updateData.person = String(body.person).trim();
+      if (body.phone !== undefined) updateData.phone = String(body.phone).trim();
+      if (body.department !== undefined) updateData.department = String(body.department).trim();
+      if (body.requested_count !== undefined) updateData.requested_count = parseInt(body.requested_count, 10) || 1;
+      if (body.target_block !== undefined) {
+        let tb = String(body.target_block).trim();
+        if (tb.toLowerCase().includes("saha")) tb = "SAHA";
+        updateData.target_block = tb;
+      }
+      if (body.description !== undefined) updateData.description = String(body.description).trim();
+
+      await fetch(`${SUPABASE_URL}/rest/v1/portal_requests?id=eq.${encodeURIComponent(reqId)}`, {
+        method: "PATCH",
+        headers: sbHeaders(),
+        body: JSON.stringify(updateData)
+      });
+      return res.status(200).json({ success: true, ok: true, message: "Talep güncellendi." });
+    }
   }
 
   // 12. DELETE or POST /api/portal/request/{id}/delete
