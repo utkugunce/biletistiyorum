@@ -1610,29 +1610,11 @@ def api_assign_seats(req: AssignRequest):
 
 @app.get("/api/excel/summary")
 def api_excel_summary(match_name: Optional[str] = None):
-    res = parse_bilet_takip_excel()
-    if not res.get("ok"):
-        return res
+    # Excel bağımlılığı kaldırıldı - Talepler doğrudan Bilet İstiyorum Portalından yüklenir
+    active_mname = match_name or "Zeren Spor - Kuzeyboru"
+    evaluated = []
 
-    active_mname = match_name or get_current_excel_match_name(state_mgr.active_folder)
-    reqs: List[Dict[str, Any]] = []
-    for m in res.get("matches", []):
-        if (
-            m["match_name"].lower() == active_mname.lower()
-            or normalize_text(m["match_name"]) == normalize_text(active_mname)
-        ):
-            reqs = m["requests"]
-            active_mname = m["match_name"]
-            break
-
-    state = scan_match_folder(state_mgr.active_folder)
-    all_tickets = []
-    for b in state["blocks"].values():
-        all_tickets.extend(b["tickets"].values())
-
-    evaluated = match_requests_with_tickets(reqs, all_tickets)
-
-    # Portal taleplerini (Bilet İstiyorum) de entegre et
+    # Portal taleplerini (Bilet İstiyorum) yükle
     portal_reqs = get_requests_for_match(active_mname)
     portal_evaluated = []
     for pr in portal_reqs:
@@ -1682,10 +1664,10 @@ def api_excel_summary(match_name: Optional[str] = None):
 
     return {
         "ok": True,
-        "excel_path": str(EXCEL_DEFAULT_PATH),
-        "excel_exists": EXCEL_DEFAULT_PATH.exists(),
+        "excel_path": "Bilet İstiyorum Portalı",
+        "excel_exists": True,
         "active_match_name": active_mname,
-        "available_matches": [m["match_name"] for m in res.get("matches", [])],
+        "available_matches": ["Zeren Spor - Kuzeyboru"],
         "requests": all_evaluated,
         "total_requested": total_requested,
         "total_assigned": total_assigned,
