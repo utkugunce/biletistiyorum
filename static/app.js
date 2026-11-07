@@ -450,24 +450,30 @@ function renderSeatingStage() {
       } else {
         const isAssigned = ticket.status === "assigned";
         const isDiger = ticket.status === "diger";
-        let bgColor = "#D97706";
+        let bgColor = "#FFFFFF";
         let ownerShort = "Boşta";
 
         if (colorMode === "classic") {
-          bgColor = isAssigned ? "#DC2626" : "#D97706";
+          bgColor = isAssigned ? "#DC2626" : (isDiger ? "#D97706" : "#FFFFFF");
           ownerShort = isAssigned ? ticket.subgroup || ticket.group : isDiger ? "diğer" : "Boşta";
         } else {
           if (isAssigned) {
             bgColor = ticket.color || "#7E22CE";
             ownerShort = ticket.subgroup || ticket.group;
           } else {
-            bgColor = "#D97706";
+            bgColor = isDiger ? "#D97706" : "#FFFFFF";
             ownerShort = isDiger ? "diğer" : "Boşta";
           }
         }
 
         cell.style.backgroundColor = bgColor;
-        cell.style.color = "#FFFFFF";
+        if (bgColor === "#FFFFFF") {
+          cell.style.color = "#334155";
+          cell.style.border = "1.5px solid #CBD5E1";
+        } else {
+          cell.style.color = "#FFFFFF";
+          cell.style.border = "1.5px solid transparent";
+        }
 
         if (selectedSeats.has(seatId)) {
           cell.classList.add("selected");
@@ -527,7 +533,7 @@ function renderBlockLegend(bInfo) {
   const counts = {};
   Object.values(bInfo.tickets || {}).forEach((t) => {
     const lbl = t.group ? t.group : "Boşta";
-    const col = t.status === "assigned" ? t.color : "#D97706";
+    const col = t.status === "assigned" ? t.color : (t.status === "diger" ? "#D97706" : "#FFFFFF");
     if (!counts[lbl]) counts[lbl] = { label: lbl, color: col, count: 0 };
     counts[lbl].count += 1;
   });
