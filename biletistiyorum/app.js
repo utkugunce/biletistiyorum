@@ -92,8 +92,15 @@ function initLiveSync() {
 }
 
 async function checkAuthAndInit() {
+  const savedToken = localStorage.getItem("zeren_admin_token");
+  if (savedToken) {
+    // Kayıtlı token varsa başlangıçta form gösterilmez, arka planda doğrulanır
+    hideLoginOverlay();
+  } else {
+    showLoginOverlay();
+  }
+
   try {
-    const savedToken = localStorage.getItem("zeren_admin_token");
     const headers = savedToken ? { "X-Admin-Token": savedToken, "Authorization": "Bearer " + savedToken } : {};
     const res = await fetch("/api/auth/check", { headers });
     const text = await res.text();
@@ -113,7 +120,9 @@ async function checkAuthAndInit() {
       showLoginOverlay();
     }
   } catch (err) {
-    showLoginOverlay();
+    if (!savedToken) {
+      showLoginOverlay();
+    }
   }
 }
 
@@ -558,7 +567,7 @@ function renderBlockLegend(bInfo) {
       });
       badge.addEventListener("click", () => {
         const targetLbl = item.label === "Boşta" ? "__UNASSIGNED__" : item.label;
-        if (highlightedLabel === targetLbl) {
+        if (highlightedLabel === targetLbl || (selectedSeats.size > 0 && !highlightedLabel)) {
           highlightedLabel = null;
           selectedSeats.clear();
         } else {
@@ -566,6 +575,7 @@ function renderBlockLegend(bInfo) {
           selectSeatsByGroupInCurrentBlock(item.label === "Boşta" ? "" : item.label);
         }
         renderSeatingStage();
+        updateSelectionBar();
       });
       bar.appendChild(badge);
     });
@@ -574,10 +584,22 @@ function renderBlockLegend(bInfo) {
 // ---------------------------------------------------------
 // 4. KOLTUK SEÇİMİ VE KAYDIRMA
 // ---------------------------------------------------------
+function clearAllFocusAndSelection() {
+  highlightedLabel = null;
+  selectedSeats.clear();
+  renderSeatingStage();
+  updateSelectionBar();
+}
+
 function onSeatMouseDown(e, rNum, seatNum, seatId) {
   if (e.button !== 0) return;
   e.preventDefault();
   isMouseDown = true;
+
+  // Herhangi bir koltuğa tıklandığında soluklaştırma (grup karartma) modundan çık
+  if (highlightedLabel) {
+    highlightedLabel = null;
+  }
 
   if (currentMode === "shift") {
     handleShiftSeatClick(rNum, seatNum);
@@ -1375,6 +1397,7 @@ async function handleExcelAssignClick(req) {
 }
 
 function highlightExcelSeats(seatList) {
+  highlightedLabel = null;
   selectedSeats.clear();
   (seatList || []).forEach((sid) => selectedSeats.add(sid));
   renderSeatingStage();
@@ -1409,6 +1432,7 @@ function escapeHtml(str) {
 
 function selectSeatsByKeys(seatKeys) {
   if (!seatKeys || seatKeys.length === 0) return;
+  highlightedLabel = null;
   const firstBlock = seatKeys[0].split(":")[0];
   if (firstBlock !== currentBlockId) {
     currentBlockId = firstBlock;
@@ -1742,10 +1766,20 @@ function bindUIEvents() {
   const stageWrap = document.getElementById("seatingStageWrapper");
   if (stageWrap) {
     stageWrap.addEventListener("click", (e) => {
-      if (e.target === stageWrap || e.target.classList.contains("canvas-middle-row") || e.target.id === "seatingGrid") {
+      // Koltuk hücresi dışındaki boş alana tıklandığında hem karartmayı hem seçimi sıfırla
+      if (!e.target.closest(".seat-cell") && !e.target.closest(".row-label-btn") && !e.target.closest(".dock-legend-chips")) {
+        let changed = false;
         if (highlightedLabel) {
           highlightedLabel = null;
+          changed = true;
+        }
+        if (selectedSeats.size > 0) {
+          selectedSeats.clear();
+          changed = true;
+        }
+        if (changed) {
           renderSeatingStage();
+          updateSelectionBar();
         }
       }
     });
@@ -1791,6 +1825,7 @@ function bindUIEvents() {
   // Alt Dock Aksiyonları
   document.getElementById("btnClearSelection").addEventListener("click", () => {
     selectedSeats.clear();
+    highlightedLabel = null;
     renderSeatingStage();
     updateSelectionBar();
   });
