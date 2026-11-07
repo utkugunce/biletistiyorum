@@ -712,8 +712,9 @@ body {
 
 .seat-cell,
 .seat-spacer {
-  width: 44px;
-  height: 40px;
+  width: 52px;
+  min-width: 46px;
+  height: 46px;
   flex-shrink: 0;
 }
 
@@ -783,13 +784,20 @@ body {
 }
 
 .seat-owner {
-  font-size: 9px;
-  font-weight: 600;
-  max-width: 40px;
-  white-space: nowrap;
+  font-size: 8.5px;
+  font-weight: 700;
+  width: 100%;
+  max-width: 100%;
+  text-align: center;
+  white-space: normal;
+  word-break: break-word;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  opacity: 0.95;
+  opacity: 0.98;
   margin-top: 1px;
 }
 

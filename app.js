@@ -504,7 +504,7 @@ function renderSeatingStage() {
         cell.title = `${bInfo.id} Blok · Sıra ${rNum} Koltuk ${seatNum}\nKişi/Grup: ${ticket.label || "Ana Klasör"}${pdfNote}`;
         cell.innerHTML = `
           <span class="seat-num">${seatNum}</span>
-          <span class="seat-owner">${ownerShort}</span>
+          <span class="seat-owner" style="${ownerShort.length > 10 ? 'font-size:7.5px;letter-spacing:-0.03em;' : ''}">${ownerShort}</span>
         `;
       }
 
