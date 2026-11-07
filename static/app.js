@@ -27,7 +27,7 @@ let highlightedLabel = null;
 let expandedGroupKey = null;
 
 // Canlı Excel Verisi ve Filtreler
-let activeSidebarTab = "excel"; // "excel" | "dist"
+let activeSidebarTab = "pending"; // "pending" | "sent" | "dist"
 let excelData = null;
 let excelBlockFilter = "ALL";
 let excelSearchQuery = "";
@@ -869,7 +869,14 @@ function renderGroupsSummary() {
   });
 
   if (filtered.length === 0) {
-    container.innerHTML = `<div style="padding:20px; color:#64748b; font-size:12px; text-align:center;">Sonuç bulunamadı.</div>`;
+    const emptyMsg = isSentTab
+      ? "Henüz WhatsApp üzerinden bilet gönderilmiş talep bulunmuyor."
+      : "Bekleyen talep bulunmuyor. Tüm talepler karşılandı ve gönderildi.";
+    listEl.innerHTML = `
+      <div style="padding:28px 16px; text-align:center; color:#64748b; font-size:12.5px;">
+        <i class="ph ${isSentTab ? "ph-paper-plane-tilt" : "ph-check-circle"}" style="font-size:28px; display:block; margin-bottom:8px; color:${isSentTab ? "#059669" : "#7c3aed"}; opacity:0.85;"></i>
+        <span>${emptyMsg}</span>
+      </div>`;
     return;
   }
 
@@ -1050,12 +1057,29 @@ function renderGroupsSummary() {
 // 6.B CANLI EXCEL TALEPLERİ PANELİ VE ATAMA İŞLEMLERİ
 // ---------------------------------------------------------
 function switchSidebarTab(tabName) {
+  if (tabName === "excel") tabName = "pending";
   activeSidebarTab = tabName;
-  const isExcel = tabName === "excel";
-  document.getElementById("tabBtnExcel").classList.toggle("active", isExcel);
-  document.getElementById("tabBtnDistribution").classList.toggle("active", !isExcel);
-  document.getElementById("panelExcel").classList.toggle("hidden", !isExcel);
-  document.getElementById("panelDistribution").classList.toggle("hidden", isExcel);
+  const isPending = tabName === "pending";
+  const isSent = tabName === "sent";
+  const isDist = tabName === "dist";
+
+  const btnExcel = document.getElementById("tabBtnExcel");
+  const btnSent = document.getElementById("tabBtnSent");
+  const btnDist = document.getElementById("tabBtnDistribution");
+
+  if (btnExcel) btnExcel.classList.toggle("active", isPending);
+  if (btnSent) btnSent.classList.toggle("active", isSent);
+  if (btnDist) btnDist.classList.toggle("active", isDist);
+
+  const panelExcel = document.getElementById("panelExcel");
+  const panelDist = document.getElementById("panelDistribution");
+
+  if (panelExcel) panelExcel.classList.toggle("hidden", isDist);
+  if (panelDist) panelDist.classList.toggle("hidden", !isDist);
+
+  if (isPending || isSent) {
+    renderExcelPanel();
+  }
 }
 
 const reloadExcelSummary = fetchExcelSummary;
@@ -1090,9 +1114,16 @@ function renderExcelPanel() {
   document.getElementById("excelStatRequested").textContent = excelData.total_requested || 0;
   document.getElementById("excelStatAssigned").textContent = excelData.total_assigned || 0;
   document.getElementById("excelStatPending").textContent = excelData.total_pending || 0;
-  document.getElementById("badgeExcelPendingCount").textContent = excelData.pending_count || 0;
+  const allReqs = excelData.requests || [];
+  const sentCount = allReqs.filter(r => r.whatsapp_sent).length;
+  const pendingCount = allReqs.filter(r => !r.whatsapp_sent).length;
+
+  const badgePending = document.getElementById("badgeExcelPendingCount");
+  if (badgePending) badgePending.textContent = pendingCount;
+  const badgeSent = document.getElementById("badgeExcelSentCount");
+  if (badgeSent) badgeSent.textContent = sentCount;
   const mobileBadge = document.getElementById("badgeMobileRequestsCount");
-  if (mobileBadge) mobileBadge.textContent = excelData.pending_count || 0;
+  if (mobileBadge) mobileBadge.textContent = pendingCount;
 
   // Dağılım rozetini de güncelle
   const distBadge = document.getElementById("badgeAssignedPeopleCount");
@@ -1126,9 +1157,17 @@ function renderExcelPanel() {
   const listEl = document.getElementById("excelRequestsList");
   listEl.innerHTML = "";
 
+  const isSentTab = activeSidebarTab === "sent";
+
   const filtered = (excelData.requests || []).filter((r) => {
-    // WhatsApp ile biletleri gönderilmiş talepleri ana panel listesinden gizle
-    if (r.whatsapp_sent) return false;
+    // "Gelen Talepler" sekmesinde henüz WhatsApp'tan gönderilmemiş (bekleyen) talepler;
+    // "Gönderilen Talepler" sekmesinde ise WhatsApp ile biletleri gönderilmiş talepler listelenir.
+    if (isSentTab) {
+      if (!r.whatsapp_sent) return false;
+    } else {
+      if (r.whatsapp_sent) return false;
+    }
+
     if (excelBlockFilter === "PORTAL" && r.source !== "portal") return false;
     if (excelBlockFilter !== "ALL" && excelBlockFilter !== "PORTAL" && r.target_block !== excelBlockFilter) return false;
     if (excelSearchQuery) {
@@ -1492,7 +1531,9 @@ function bindUIEvents() {
   document.getElementById("btnOpenArenaFromBar").addEventListener("click", () => switchMainView("arena"));
 
   // Sağ Sütun Sekmeleri (Excel Talepleri vs Dağılım Listesi)
-  document.getElementById("tabBtnExcel").addEventListener("click", () => switchSidebarTab("excel"));
+  document.getElementById("tabBtnExcel").addEventListener("click", () => switchSidebarTab("pending"));
+  const tabBtnSent = document.getElementById("tabBtnSent");
+  if (tabBtnSent) tabBtnSent.addEventListener("click", () => switchSidebarTab("sent"));
   document.getElementById("tabBtnDistribution").addEventListener("click", () => switchSidebarTab("dist"));
 
   // Yan Panel Aç / Kapat (Masaüstü ve Mobil)

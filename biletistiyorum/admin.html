@@ -434,12 +434,17 @@
 
       <!-- Sekme Butonları (Gelen Talepler vs Dağılım Özeti) -->
       <div class="sidebar-tabs-bar" role="tablist">
-        <button class="sidebar-nav-tab active" id="tabBtnExcel" data-panel="excel">
+        <button class="sidebar-nav-tab active" id="tabBtnExcel" data-panel="excel" title="Atanmayı veya gönderilmeyi bekleyen talepler">
           <i class="ph-bold ph-tray"></i>
           <span>Gelen Talepler</span>
           <span class="tab-badge" id="badgeExcelPendingCount">0</span>
         </button>
-        <button class="sidebar-nav-tab" id="tabBtnDistribution" data-panel="dist">
+        <button class="sidebar-nav-tab" id="tabBtnSent" data-panel="sent" title="WhatsApp üzerinden biletleri gönderilmiş talepler">
+          <i class="ph-bold ph-paper-plane-tilt"></i>
+          <span>Gönderilen Talepler</span>
+          <span class="tab-badge tab-badge-success" id="badgeExcelSentCount">0</span>
+        </button>
+        <button class="sidebar-nav-tab" id="tabBtnDistribution" data-panel="dist" title="Kişi ve grup bazlı koltuk dağılım listesi">
           <i class="ph-bold ph-users-three"></i>
           <span>Dağılım Özeti</span>
           <span class="tab-badge" id="badgeAssignedPeopleCount">0</span>
