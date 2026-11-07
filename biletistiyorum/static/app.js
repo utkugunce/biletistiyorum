@@ -1105,6 +1105,8 @@ function renderExcelPanel() {
   listEl.innerHTML = "";
 
   const filtered = (excelData.requests || []).filter((r) => {
+    // WhatsApp ile biletleri gönderilmiş talepleri ana panel listesinden gizle
+    if (r.whatsapp_sent) return false;
     if (excelBlockFilter === "PORTAL" && r.source !== "portal") return false;
     if (excelBlockFilter !== "ALL" && excelBlockFilter !== "PORTAL" && r.target_block !== excelBlockFilter) return false;
     if (excelSearchQuery) {
@@ -2539,6 +2541,14 @@ async function setRecipientSentStatus(reqId, person, sent) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ request_id: reqId, person: person, sent: sent }),
     });
+    if (excelData && Array.isArray(excelData.requests)) {
+      excelData.requests.forEach(r => {
+        if (r.request_id === reqId || r.person === person) {
+          r.whatsapp_sent = sent;
+        }
+      });
+      renderExcelPanel();
+    }
     updateDispatchBadge();
   } catch (err) {
     console.error("Durum kaydedilemedi:", err);

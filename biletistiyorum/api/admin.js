@@ -655,6 +655,8 @@ export default async function handler(req, res) {
       const isComp = asgCount >= reqCount && reqCount > 0;
       const isPart = asgCount > 0 && !isComp;
 
+      const sentMap = sysState.sent_map || {};
+      const isSent = Boolean(sentMap[pr.id] || (isComp && sentMap[person]));
       return {
         request_id: pr.id,
         source: "portal",
@@ -675,6 +677,7 @@ export default async function handler(req, res) {
         matched_keys: matchedKeys,
         matched_seats: matchedSeats,
         assigned_count: asgCount,
+        whatsapp_sent: isSent,
         fulfillment_status: isComp ? "completed" : isPart ? "partial" : "pending",
         status_badge: isComp ? "Portal: Koltuklar Ayrıldı ✅" : isPart ? "Portal: Kısmi ⚠️" : "Bilet İstiyorum Talebi ⏳",
         status_color: isComp ? "#059669" : isPart ? "#D97706" : "#2563EB",

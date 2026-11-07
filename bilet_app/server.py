@@ -1645,6 +1645,7 @@ def api_excel_summary(match_name: Optional[str] = None):
             "matched_keys": [f"{pr.get('assigned_block', '121')}:{s}" for s in asg_seats],
             "matched_seats": asg_seats,
             "assigned_count": asg_c,
+            "whatsapp_sent": bool(pr.get("whatsapp_sent", False)),
             "fulfillment_status": "completed" if is_comp else ("partial" if is_part else "pending"),
             "status_badge": "Portal: Koltuklar Ayrıldı ✅" if is_comp else ("Portal: Kısmi ⚠️" if is_part else "Bilet İstiyorum Talebi ⏳"),
             "status_color": "#059669" if is_comp else ("#D97706" if is_part else "#2563EB"),
