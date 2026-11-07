@@ -1955,23 +1955,10 @@ def api_open_explorer(group: str = "", subgroup: str = "", request_id: str = "",
 
     target_str = str(target.resolve())
     try:
-        # Klasör içindeki ilk PDF'i seçerek Explorer penceresini öne getir
-        pdf_files = [f for f in os.listdir(target_str) if f.lower().endswith(".pdf")] if target.is_dir() else []
-        if pdf_files:
-            file_to_highlight = os.path.join(target_str, pdf_files[0])
-            subprocess.Popen(f'explorer.exe /select,"{file_to_highlight}"', shell=True)
-        else:
-            subprocess.Popen(f'explorer.exe "{target_str}"', shell=True)
-        try:
-            os.startfile(target_str)
-        except Exception:
-            pass
+        from desktop_helper import open_folder_on_user_desktop
+        open_folder_on_user_desktop(target)
     except Exception as e:
         print("Explorer open error:", e)
-        try:
-            os.startfile(target_str)
-        except Exception:
-            pass
     return {"ok": True, "opened": target_str}
 
 
@@ -2659,7 +2646,7 @@ def _auto_folder_sync_loop():
             sync_cloud_assignments_to_folders(state_mgr.active_folder)
         except Exception as e:
             print("auto sync error:", e)
-        time.sleep(5)
+        time.sleep(1.5)
 
 
 if __name__ == "__main__":

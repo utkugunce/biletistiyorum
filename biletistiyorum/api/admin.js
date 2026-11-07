@@ -912,9 +912,20 @@ export default async function handler(req, res) {
     return res.status(404).json({ error: "Bilet bulunamadı." });
   }
 
-  // 9.8 POST /api/open-explorer (no-op on cloud server)
+  // 9.8 GET/POST /api/open-explorer (Queues open-explorer command in cloud state for local desktop helper)
   if (pathname === "/api/open-explorer") {
-    return res.status(200).json({ ok: true });
+    const grp = (urlObj.searchParams.get("group") || body.group || "").trim();
+    const sub = (urlObj.searchParams.get("subgroup") || body.subgroup || "").trim();
+    const reqId = (urlObj.searchParams.get("request_id") || body.request_id || "").trim();
+    sysState.explorer_cmd = {
+      id: Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+      group: grp,
+      subgroup: sub,
+      request_id: reqId,
+      ts: Date.now()
+    };
+    await saveSystemState(sysState);
+    return res.status(200).json({ ok: true, queued: sysState.explorer_cmd });
   }
 
   // 10. POST /api/dispatch/mark-sent
@@ -923,6 +934,15 @@ export default async function handler(req, res) {
     const key = body.request_id || body.recipient_id || body.person;
     if (key) {
       sysState.sent_map[key] = Boolean(body.sent);
+      if (body.sent) {
+        sysState.explorer_cmd = {
+          id: Date.now() + "_" + Math.random().toString(36).slice(2, 7),
+          group: (body.person || "").trim(),
+          subgroup: "",
+          request_id: (body.request_id || "").trim(),
+          ts: Date.now()
+        };
+      }
       await saveSystemState(sysState);
     }
     return res.status(200).json({ success: true, ok: true });

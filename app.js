@@ -2564,11 +2564,17 @@ async function handleDispatchSendWhatsApp(r, cardEl) {
   // 3. Masaüstü Akışı: Tekli bilet indirme YOK. Sadece kişinin Windows klasörü açılır, WhatsApp uygulaması açılır.
   const dlCount = (r.individual_tickets || []).length || r.seat_count || 0;
 
-  // 1. Windows Klasörünü Oluştur ve Aç (bulutta atanan biletler yerel klasöre ayrılır)
+  // 1. Windows Klasörünü Oluştur ve Aç (hem doğrudan yerel port hem bulut köprüsü üzerinden tetiklenir)
   try {
     const personName = r.person || "";
     const reqId = r.request_id || r.id || "";
-    await fetch(`http://127.0.0.1:8765/api/open-explorer?group=${encodeURIComponent(personName)}&request_id=${encodeURIComponent(reqId)}`, { mode: "no-cors" }).catch(() => {});
+    const qs = `group=${encodeURIComponent(personName)}&request_id=${encodeURIComponent(reqId)}`;
+    fetch(`/api/open-explorer?${qs}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ group: personName, request_id: reqId })
+    }).catch(() => {});
+    fetch(`http://127.0.0.1:8765/api/open-explorer?${qs}`, { mode: "no-cors" }).catch(() => {});
   } catch (err) {
     console.log("Explorer açma isteği:", err);
   }
