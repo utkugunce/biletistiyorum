@@ -312,11 +312,14 @@ yapılmalıdır; Linux üzerindeki dosya testleri bu kabul testinin yerine geçm
 
 ## 11. Windows çalışma klasörünü taşıma
 
-Programı `C:\projects\biletistiyorum` konumuna taşımak için
-`WINDOWS_WORKSPACE_MIGRATION.md` izlenir. `scripts/migrate_windows_workspace.py`
-önce salt okunur plan üretir; `--apply` servis kapalıyken doğrulanmış kopyayı
-hazırlar. Maçlar programın kardeşi `Zeren_Bilet_Maclar` altında kalır; eski,
-yönetilmeyen kişi PDF klasörleri ayrı arşive alınır. Kaynak silinmez. Mutlak
-storage yolları ve journal kökleri doğrulanmış yeni konuma uyarlanır; operasyon
-verileri Git'e eklenmez. Yeni konumda gerçek kabul tamamlanmadan eski kurulum
-kaldırılmaz.
+Çalışma alanını `C:\projects\biletistiyorum` konumunda toplamak için
+`WINDOWS_WORKSPACE_MIGRATION.md` izlenir. Ana klasörün altında kod/Git deposu
+`Uygulama`, aktif maçlar `Zeren_Bilet_Maclar`, eski kişi PDF'leri ve doğrulama
+kayıtları `Arsiv` içinde tutulur. Ana klasörde tek başlatıcı bulunur; bütün
+kalıcı hedefler bu kökün altındadır.
+
+`scripts/migrate_windows_workspace.py` önce salt okunur plan üretir. `--apply`
+servis kapalıyken doğrulanmış kopyayı hazırlar ve tek kök dizin olarak yayınlar.
+Kaynak silinmez. Mutlak storage yolları ve journal kökleri doğrulanmış yeni
+konuma uyarlanır; operasyon verileri Git'e eklenmez. Yeni konumda gerçek kabul
+tamamlanmadan eski kurulum kaldırılmaz. Vercel kaynak/kopya düzeni korunur.

@@ -122,8 +122,10 @@ kullanıcı tarayıcısında görünmesi ayrıca doğrulanacaktır.
 
 ## Windows klasör düzenleme ve taşıma hazırlığı
 
-Kullanıcı program kökünü `C:\projects\biletistiyorum` konumuna taşımayı istedi.
-Önizleme ve doğrulanmış kopya üreten bağımsız taşıma aracı hazırlandı. Arşiv,
-aktif maçlar ve program ayrı tutulur; API/static kopya mimarisi değiştirilmez.
-10 taşıma regresyonu geçti; toplam Python testi sayısı 50 oldu. Gerçek Windows
-önizlemesi, taşıması ve yeni konumdan servis kabulü bu kayıtta henüz bekliyor.
+Kullanıcı bütün bileşenleri `C:\projects\biletistiyorum` altında toplamak istedi.
+Kod `Uygulama`, maçlar `Zeren_Bilet_Maclar`, eski kişi klasörleri ve kayıtlar
+`Arsiv` altında hazırlanır. Dışarıda kalıcı program/maç/arşiv hedefi yoktur.
+Tek başlatıcı kullanıcı ortamındaki anahtarı yükler; anahtarı dosyaya yazmaz.
+Önizleme ve doğrulanmış kopya aracı 10 taşıma regresyonuyla doğrulandı; toplam
+Python testi sayısı 50 oldu. Gerçek Windows önizlemesi, taşıması ve yeni
+konumdan servis kabulü bu kayıtta henüz bekliyor.

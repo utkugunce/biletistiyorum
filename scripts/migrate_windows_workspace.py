@@ -11,6 +11,7 @@ from pathlib import Path
 import shutil
 import socket
 import subprocess
+import sys
 import tempfile
 
 JOURNAL = '.zeren-folder-sync.json'
@@ -63,10 +64,11 @@ def plan_migration(source, destination, stamp=None):
     storage = read_json(storage_file) if storage_file.exists() else {}
     active = Path(storage.get('last_folder') or source).resolve()
     matches = source.parent / 'Zeren_Bilet_Maclar'
-    new_matches = destination.parent / 'Zeren_Bilet_Maclar'
+    program = destination / 'Uygulama'
+    new_matches = destination / 'Zeren_Bilet_Maclar'
     if matches.exists() and new_matches.exists():
         raise ValueError(f'Match destination already exists: {new_matches}')
-    archive = destination.parent / 'Zeren_Bilet_Arsiv' / ('121_BLOK_' + (stamp or datetime.now().strftime('%Y%m%d_%H%M%S_%f')))
+    archive = destination / 'Arsiv' / ('121_BLOK_' + (stamp or datetime.now().strftime('%Y%m%d_%H%M%S_%f')))
     if archive.exists():
         raise ValueError(f'Archive destination already exists: {archive}')
     # Never rearrange a managed or active match tree internally.
@@ -78,13 +80,13 @@ def plan_migration(source, destination, stamp=None):
         if may_archive and child.name not in tracked and child.name not in PROGRAM_DIRS:
             if any(item.suffix.lower() == '.pdf' for item in files(child)):
                 legacy.append(child.name)
-    copy_roots = [(source, destination)] + ([(matches, new_matches)] if matches.exists() else [])
+    copy_roots = [(source, program)] + ([(matches, new_matches)] if matches.exists() else [])
     if not any(active.is_relative_to(old) for old, _ in copy_roots):
         raise ValueError(f'Active match is outside the migration roots: {active}')
     for old, new in copy_roots:
         if linked(old) or linked(new.parent):
             raise ValueError('Linked migration roots are not supported.')
-    return {'source': source, 'destination': destination, 'matches': matches,
+    return {'source': source, 'destination': destination, 'program': program, 'matches': matches,
             'new_matches': new_matches, 'archive': archive, 'legacy': legacy,
             'active': active}
 
@@ -94,7 +96,7 @@ def mapped(path, plan, *, storage=False):
     if storage and path == plan['source'] and plan['legacy']:
         return plan['archive']
     roots = [(plan['source'] / name, plan['archive'] / name) for name in plan['legacy']]
-    roots += [(plan['matches'], plan['new_matches']), (plan['source'], plan['destination'])]
+    roots += [(plan['matches'], plan['new_matches']), (plan['source'], plan['program'])]
     for old, new in roots:
         if path.is_relative_to(old):
             return new / path.relative_to(old)
@@ -102,6 +104,7 @@ def mapped(path, plan, *, storage=False):
 
 
 def write_json(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + '.migration.tmp')
     temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding='utf-8')
     temporary.replace(path)
@@ -144,18 +147,18 @@ def apply_migration(plan, *, check_service=True):
             if old.name == JOURNAL:
                 journals.append((old, staged, final))
 
-        program = stage / 'program'
+        program = stage / 'Uygulama'
         program.mkdir()
         for child in sorted(plan['source'].iterdir()):
             if child.name in CACHES:
                 continue
             if child.name in plan['legacy']:
-                copy_entry(child, stage / 'archive' / child.name, plan['archive'] / child.name)
+                copy_entry(child, stage / 'Arsiv' / plan['archive'].name / child.name, plan['archive'] / child.name)
             else:
-                copy_entry(child, program / child.name, plan['destination'] / child.name)
+                copy_entry(child, program / child.name, plan['program'] / child.name)
         if plan['matches'].exists():
-            (stage / 'matches').mkdir()
-            copy_entry(plan['matches'], stage / 'matches', plan['new_matches'])
+            (stage / 'Zeren_Bilet_Maclar').mkdir()
+            copy_entry(plan['matches'], stage / 'Zeren_Bilet_Maclar', plan['new_matches'])
         for original, staged, final in journals:
             journal = read_json(staged)
             if journal.get('version') != 1 or not isinstance(journal.get('managed'), dict):
@@ -177,46 +180,46 @@ def apply_migration(plan, *, check_service=True):
         for record in records:
             if digest(Path(record['source'])) != record['sha256']:
                 raise ValueError('A source file changed during migration. Stop all file operations and retry.')
-        report_dir = parent / 'Zeren_Bilet_Arsiv' / 'Tasima_Kayitlari'
-        report_dir.mkdir(parents=True, exist_ok=True)
-        report = report_dir / (plan['archive'].name + '.json')
-        if report.exists():
-            raise ValueError('Migration report already exists.')
         modified = {str(final) for _, _, final in journals}
         if storage_file.exists():
-            modified.add(str(plan['destination'] / 'bilet_app/data/storage.json'))
-        pairs = [(program, plan['destination'])]
-        if plan['matches'].exists():
-            pairs.append((stage / 'matches', plan['new_matches']))
-        if plan['legacy']:
-            pairs.append((stage / 'archive', plan['archive']))
-        for staged, final in pairs:
-            if final.exists():
-                raise ValueError(f'Destination appeared during migration: {final}')
-            final.parent.mkdir(parents=True, exist_ok=True)
-            staged.rename(final)
-            published.append((staged, final))
-        git_root = subprocess.run(['git', 'rev-parse', '--show-toplevel'], cwd=plan['destination'], capture_output=True, check=True)
-        if Path(git_root.stdout.decode('utf-8').strip()).resolve() != plan['destination']:
-            raise ValueError('Copied Git configuration points to a different workspace.')
-        # Record both the verified original digest and final digest of metadata
-        # intentionally rewritten for the new absolute paths. No secrets logged.
+            modified.add(str(plan['program'] / 'bilet_app/data/storage.json'))
+        # One final rename publishes the entire workspace, with every permanent
+        # application, match and archive directory inside the requested root.
+        launcher = stage / 'Bilet_Yonetimini_Baslat.cmd'
+        python_path = str(Path(sys.executable).resolve())
+        launcher.write_text(
+            '@echo off\nchcp 65001 >nul\n'
+            'cd /d "%~dp0Uygulama"\n'
+            'set "ZEREN_PYTHON=' + python_path + '"\n'
+            'powershell -NoProfile -Command "'
+            '$savedToken = [Environment]::GetEnvironmentVariable(\'ZEREN_COMPANION_TOKEN\', \'User\'); '
+            'if ($savedToken) { $env:ZEREN_COMPANION_TOKEN = $savedToken }; '
+            '$env:ZEREN_CLOUD_URL = \'https://biletistiyorum.vercel.app\'; '
+            'Start-Process \'https://biletistiyorum.vercel.app/admin\'; '
+            '& $env:ZEREN_PYTHON \'bilet_app/server.py\'"\npause\n', encoding='utf-8')
+        report_relative = Path('Arsiv') / 'Tasima_Kayitlari' / (plan['archive'].name + '.json')
+        report = plan['destination'] / report_relative
         for record in records:
-            record['destination_sha256'] = digest(Path(record['destination']))
+            staged = stage / Path(record['destination']).relative_to(plan['destination'])
+            record['destination_sha256'] = digest(staged)
             if record['destination'] not in modified and record['destination_sha256'] != record['sha256']:
                 raise ValueError('Final copy verification failed.')
+        git_root = subprocess.run(['git', 'rev-parse', '--show-toplevel'], cwd=program, capture_output=True, check=True)
+        if Path(git_root.stdout.decode('utf-8').strip()).resolve() != program:
+            raise ValueError('Copied Git configuration points to a different workspace.')
+        if plan['destination'].exists():
+            raise ValueError('Destination appeared during migration.')
+        stage.rename(plan['destination'])
+        published.append((stage, plan['destination']))
         write_json(report, {'completed': True, 'source_preserved': True,
                             'active_match': str(mapped(plan['active'], plan, storage=True)), 'files': records})
-        try:
-            stage.rmdir()
-        except OSError:
-            pass
         return report
     except Exception:
         for staged, final in reversed(published):
             final.rename(staged)
         # Keep our staging copy for diagnosis. All original files remain intact.
         raise
+
 
 
 def main():
@@ -227,7 +230,8 @@ def main():
     args = parser.parse_args()
     try:
         plan = plan_migration(args.source, args.destination)
-        print('PROGRAM:', plan['destination'])
+        print('ANA KLASOR:', plan['destination'])
+        print('PROGRAM:', plan['program'])
         print('MACLAR:', plan['new_matches'])
         print('ARSIV:', plan['archive'])
         print('AKTIF MAC:', mapped(plan['active'], plan, storage=True))
@@ -237,7 +241,7 @@ def main():
             return 0
         report = apply_migration(plan)
         print('TAMAMLANDI. Dogrulama kaydi:', report)
-        print('Eski konum yedek olarak korundu. Servisi yeni konumdan baslatin.')
+        print('Eski konum yedek olarak korundu. Yeni ana klasordeki Bilet_Yonetimini_Baslat.cmd dosyasini kullanin.')
         return 0
     except (ValueError, OSError, subprocess.SubprocessError, KeyError) as error:
         print('ISLEM DURDU:', error)

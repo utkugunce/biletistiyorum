@@ -3,10 +3,11 @@
 Hedef düzen:
 
 ```text
-C:\projects\
-  biletistiyorum\           Program ve Git deposu
-  Zeren_Bilet_Maclar\       Aktif maçlar ve talep PDF klasörleri
-  Zeren_Bilet_Arsiv\        Eski kişi klasörleri ve taşıma kayıtları
+C:\projects\biletistiyorum\
+  Uygulama\                  Program ve Git deposu
+  Zeren_Bilet_Maclar\         Aktif maçlar ve talep PDF klasörleri
+  Arsiv\                     Eski kişi klasörleri ve taşıma kayıtları
+  Bilet_Yonetimini_Baslat.cmd
 ```
 
 `scripts/migrate_windows_workspace.py` Python standart kütüphanesini kullanır.
@@ -35,20 +36,17 @@ yeniden gruplanmaz; göreli konumları korunur. Sembolik link/junction ayrı
 inceleme gerektirir ve bu araçla taşınmaz. Önbellek klasörleri yeni kopyaya
 alınmaz; kaynak kopyada kalır.
 
-Doğrulama kaydı `Zeren_Bilet_Arsiv\Tasima_Kayitlari` altındadır. Kaynak ve hedef
+Doğrulama kaydı `Arsiv\Tasima_Kayitlari` altındadır. Kaynak ve hedef
 yollarıyla dosya özetlerini içerir; dosya içerikleri veya sırlar rapora yazılmaz.
 Yerel storage ve telefon defteri korunur; bunları geliştirme commit'lerine
 eklemeyin. Vercel/Supabase ayarları değişmez.
 
-Taşıma sonrasında yeni PowerShell penceresinde gerekirse kullanıcı ortam
-ayarlarını yükleyip servisi yeni konumdan çalıştırın:
-
-```powershell
-Set-Location C:\projects\biletistiyorum
-$env:ZEREN_COMPANION_TOKEN = [Environment]::GetEnvironmentVariable("ZEREN_COMPANION_TOKEN", "User")
-$env:ZEREN_CLOUD_URL = "https://biletistiyorum.vercel.app"
-python bilet_app/server.py
-```
+Taşıma sonrasında ana klasördeki `Bilet_Yonetimini_Baslat.cmd` dosyası
+kullanılır. Başlatıcı kullanıcı ortamındaki companion anahtarını yükler;
+anahtarı dosyaya yazmaz. Kod `Uygulama` içinde, maç klasörleri onun kardeşi
+`Zeren_Bilet_Maclar` içinde olduğu için mevcut Python mimarisi değişmez.
+Bütün kalıcı hedefler belirtilen ana klasörün altındadır; dışarıda maç/arşiv
+klasörü oluşturulmaz. Git ve geliştirme komutları `Uygulama` içinden çalıştırılır.
 
 Canlı panelde servis bağlantısı, doğru maç/PDF klasörü, WhatsApp ve gönderim
 işareti kontrol edilir. Eski servis aynı anda başlatılmaz. Eski başlatıcı veya

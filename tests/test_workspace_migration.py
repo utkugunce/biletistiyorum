@@ -63,7 +63,7 @@ class WorkspaceMigrationTests(unittest.TestCase):
     def test_verified_copy_rebinds_active_journal_and_preserves_credentials(self):
         plan, report = self.apply()
         active = plan['new_matches'] / 'Kuzeyboru'
-        new_storage = migration.read_json(self.destination / 'bilet_app/data/storage.json')
+        new_storage = migration.read_json(self.destination / 'Uygulama/bilet_app/data/storage.json')
         self.assertEqual(new_storage['last_folder'], str(active))
         self.assertEqual(new_storage['matches'][1]['folder'], str(plan['archive']))
         self.assertEqual(new_storage['admin_tokens'], self.storage['admin_tokens'])
@@ -74,13 +74,21 @@ class WorkspaceMigrationTests(unittest.TestCase):
         self.assertEqual(new_journal['commands'], self.journal['commands'])
         self.assertEqual((active / 'Test Person/ZS-TEST/102 3 - -1.pdf').read_bytes(), self.ticket.read_bytes())
         self.assertTrue((plan['archive'] / 'Old Person/121 1 - -1.pdf').is_file())
-        self.assertFalse((self.destination / 'Old Person').exists())
-        self.assertTrue((self.destination / 'tickets/121 1 - -2.pdf').is_file())
-        self.assertFalse((self.destination / '.pytest_cache').exists())
+        self.assertFalse((self.destination / 'Uygulama/Old Person').exists())
+        self.assertTrue((self.destination / 'Uygulama/tickets/121 1 - -2.pdf').is_file())
+        self.assertFalse((self.destination / 'Uygulama/.pytest_cache').exists())
         self.assertEqual(migration.read_json(self.source / 'bilet_app/data/storage.json'), self.storage)
         self.assertEqual(migration.read_json(self.active / migration.JOURNAL), self.journal)
         self.assertTrue(migration.read_json(report)['completed'])
-        subprocess.run(['git', 'status', '--porcelain'], cwd=self.destination, capture_output=True, check=True)
+        self.assertEqual(plan['new_matches'].parent, self.destination)
+        self.assertTrue(plan['archive'].is_relative_to(self.destination))
+        self.assertTrue(report.is_relative_to(self.destination))
+        self.assertEqual({p.name for p in self.destination.iterdir()}, {'Uygulama', 'Zeren_Bilet_Maclar', 'Arsiv', 'Bilet_Yonetimini_Baslat.cmd'})
+        self.assertFalse((self.destination.parent / 'Zeren_Bilet_Maclar').exists())
+        launcher = (self.destination / 'Bilet_Yonetimini_Baslat.cmd').read_text(encoding='utf-8')
+        self.assertIn('%~dp0Uygulama', launcher)
+        self.assertNotIn('test-only-hash', launcher)
+        subprocess.run(['git', 'status', '--porcelain'], cwd=self.destination / 'Uygulama', capture_output=True, check=True)
 
     def test_existing_destination_is_never_overwritten(self):
         self.destination.mkdir(parents=True)
@@ -90,7 +98,7 @@ class WorkspaceMigrationTests(unittest.TestCase):
         self.assertEqual((self.destination / 'keep.txt').read_text(), 'keep')
 
     def test_existing_match_destination_is_never_merged(self):
-        (self.destination.parent / 'Zeren_Bilet_Maclar').mkdir(parents=True)
+        (self.destination / 'Zeren_Bilet_Maclar').mkdir(parents=True)
         with self.assertRaisesRegex(ValueError, 'already exists'):
             self.preview()
 
@@ -115,16 +123,16 @@ class WorkspaceMigrationTests(unittest.TestCase):
         self.write_json(self.source / migration.JOURNAL, {'version': 1, 'root': str(self.source), 'managed': {}})
         plan, _ = self.apply()
         self.assertEqual(plan['legacy'], [])
-        self.assertTrue((self.destination / 'Old Person/121 1 - -1.pdf').exists())
-        self.assertEqual(migration.read_json(self.destination / migration.JOURNAL)['root'], str(self.destination))
+        self.assertTrue((self.destination / 'Uygulama/Old Person/121 1 - -1.pdf').exists())
+        self.assertEqual(migration.read_json(self.destination / 'Uygulama' / migration.JOURNAL)['root'], str(self.destination / 'Uygulama'))
 
     def test_active_original_root_retains_pdf_relative_paths(self):
         self.storage['last_folder'] = str(self.source)
         self.write_json(self.source / 'bilet_app/data/storage.json', self.storage)
         plan, _ = self.apply()
         self.assertFalse(plan['legacy'])
-        self.assertTrue((self.destination / 'Old Person/121 1 - -1.pdf').exists())
-        self.assertEqual(migration.read_json(self.destination / 'bilet_app/data/storage.json')['last_folder'], str(self.destination))
+        self.assertTrue((self.destination / 'Uygulama/Old Person/121 1 - -1.pdf').exists())
+        self.assertEqual(migration.read_json(self.destination / 'Uygulama/bilet_app/data/storage.json')['last_folder'], str(self.destination / 'Uygulama'))
 
     def test_corrupted_copy_never_becomes_the_live_workspace(self):
         original_digest = migration.digest
