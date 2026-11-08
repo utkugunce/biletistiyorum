@@ -13,6 +13,16 @@ SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_publishable_aT8iwPOs6AOg5HfaAQ
 _LAST_EXPLORER_CMD_ID = None
 _INITIALIZED_CMD_ID = False
 _LAST_STATE_VERSION = None
+_INITIALIZED_KEYS = False
+_PREVIOUS_CLOUD_ASSIGNMENTS = set()
+
+_RESERVED_POOL_DIR_NAMES = {"blok", "saha", "diger", "diğer", "arsiv", "arşiv", "yedek", "biletler", "biletinial"}
+
+
+def is_pool_or_system_dir(p: Path) -> bool:
+    """Klasörün blok, saha içi veya genel arşiv gibi kullanıcı düzenleme havuzu olup olmadığını kontrol eder."""
+    norm = p.name.lower()
+    return any(term in norm for term in _RESERVED_POOL_DIR_NAMES)
 
 
 def sanitize_filename_component(name: str) -> str:
@@ -31,9 +41,10 @@ def sync_cloud_assignments_to_folders(folder: Path):
     T09: İki yönlü mutabakat ile bulut atamalarını yerel PDF klasörleriyle senkronize eder.
     - Bulutta bir gruba/talebe atanan koltuk PDF'i hedef klasöre taşınır.
     - Bulutta ataması kaldırılan (boşa çıkarılan) koltuk PDF'i kök havuza geri döner.
+    - Kullanıcının Windows Gezgini'nde elle oluşturduğu veya taşıdığı dosyalar ASLA zorla dışarı atılmaz.
     - Dosya kilitlenmesi veya erişim hataları durumunda güvenli şekilde pas geçilir.
     """
-    global _LAST_EXPLORER_CMD_ID, _INITIALIZED_CMD_ID, _LAST_STATE_VERSION
+    global _LAST_EXPLORER_CMD_ID, _INITIALIZED_CMD_ID, _LAST_STATE_VERSION, _INITIALIZED_KEYS, _PREVIOUS_CLOUD_ASSIGNMENTS
 
     if not folder or not folder.exists():
         return
@@ -70,7 +81,7 @@ def sync_cloud_assignments_to_folders(folder: Path):
         if grp:
             assigned_keys[key] = v
 
-    # A. Atanmış biletleri ilgili klasörlerine taşı
+    # A. Bulutta atanmış biletleri ilgili kişi/talep klasörlerine taşı
     for key, v in assigned_keys.items():
         grp = (v.get("group") or "").strip()
         sub = (v.get("subgroup") or "").strip()
@@ -100,19 +111,26 @@ def sync_cloud_assignments_to_folders(folder: Path):
                 except (PermissionError, OSError) as ex:
                     print(f"[Sync] Dosya taşınamadı (kilitli olabilir): {src_path.name} ({ex})")
 
-    # B. Ataması kaldırılan (virtual_map'te olmayan) biletleri kök havuza geri taşı (T09)
-    for key, src_path in path_map.items():
-        if key not in assigned_keys:
-            # Koltuk şu an atanmamış durumda. Kök havuzda mı olmalı?
+    # B. SADECE bulutta daha önce atanmış olup son güncellemede ataması kaldırılan biletleri kök havuza geri taşı (T09)
+    # Kullanıcının elle klasörlere koyduğu biletler veya blok/saha klasörlerindeki biletler asla zorla köke atılmaz.
+    if _INITIALIZED_KEYS:
+        unassigned_now = _PREVIOUS_CLOUD_ASSIGNMENTS - set(assigned_keys.keys())
+        for key in unassigned_now:
+            src_path = path_map.get(key)
             if src_path and src_path.exists() and src_path.parent.resolve() != folder.resolve():
-                dst_path = folder / src_path.name
-                if not dst_path.exists():
-                    try:
-                        shutil.move(str(src_path), str(dst_path))
-                        print(f"[Sync] Ataması kalkan bilet havuza geri döndü: {src_path.name} -> {folder.name}")
-                        path_map[key] = dst_path
-                    except (PermissionError, OSError) as ex:
-                        print(f"[Sync] Geri taşıma hatası: {src_path.name} ({ex})")
+                if not is_pool_or_system_dir(src_path.parent):
+                    dst_path = folder / src_path.name
+                    if not dst_path.exists():
+                        try:
+                            shutil.move(str(src_path), str(dst_path))
+                            print(f"[Sync] Ataması kalkan bilet havuza geri döndü: {src_path.name} -> {folder.name}")
+                            path_map[key] = dst_path
+                        except (PermissionError, OSError) as ex:
+                            print(f"[Sync] Geri taşıma hatası: {src_path.name} ({ex})")
+    else:
+        _INITIALIZED_KEYS = True
+
+    _PREVIOUS_CLOUD_ASSIGNMENTS = set(assigned_keys.keys())
 
     # 2. Bulut üzerinden gelen Dosya Gezgini açma komutunu kontrol et (T10)
     cmd_id = explorer_cmd.get("id")
