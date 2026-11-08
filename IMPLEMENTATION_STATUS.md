@@ -32,10 +32,11 @@ bulgularını güncel kod ve gerçek doğrulama durumuyla eşler. Kodun testte g
 Bu commit'ler `main` dalına gönderildi. Windows kodunun güncellenmesi için yerel
 kurulum ayrıca güncellenip yeniden başlatılmalıdır; Vercel bunu yapmaz.
 
-## Güvenli backend dalı
+## Güvenli backend yayını
 
-`fix/secure-ticket-workflow`, yönetim erişimi gerektiren geçiş kodunu içerir.
-Üretim yapılandırması olmadan `main` dalına alınmamalıdır. Tam geçiş sırası
+`fix/secure-ticket-workflow`, `fb8c425` korumalarıyla birleştirilerek `c0c9ec7`
+commit’iyle `main` dalına alındı. Kullanıcı Production ve Preview ortam
+değişkenlerini Vercel’e ekledi. Tam geçiş sırası
 `DEPLOYMENT_CHECKLIST.md` dosyasındadır. Gizli anahtarlar Git'e veya sohbete
 konulmamalıdır. Mevcut talepler/sistem snapshot'ı ve manuel PDF'ler topluca silinmez.
 
@@ -58,3 +59,17 @@ yedeklediğini doğruladı. Vercel Preview'da dört ortam ayarı eklendikten son
 maç listesi API'sinin veritabanından başarılı yanıtı kullanıcı tarafından
 korumalı önizleme tarayıcısında doğrulandı. Bu doğrulama henüz üretim RLS
 geçişi veya Windows kabulü anlamına gelmez.
+
+## Üretimde kod doğrulaması
+
+8 Kasım 2026 tarihinde `c0c9ec7` üretime gönderildi. Canlı Vercel API'sinde
+maç listesi 200 ve dinamik blok listesi döndürdü; anonim yönetici state ve gizli
+takip anahtarı olmayan talep sorgusu 401 döndürdü. Yetkisiz auth/check false
+sonucu verdi. Legacy JWT kontrolü, sunucuya anon anahtarının yapılandırılmasını
+reddeder; bu canlı sonuç service_role ile okuma yolunun çalıştığını gösterir.
+
+**Kalan geçiş adımları:** Kullanıcının Supabase SQL migration'ını çalıştırması,
+anonim tablo erişiminin kapandığının doğrulanması, yeni parolayla yönetici giriş
+kontrolü ve Windows köprüsünün güncellenip gerçek PDF/Explorer kabulünün yapılması.
+Bu adımlar bu kayıtta henüz tamamlandı sayılmaz. Windows güncellenene kadar
+eski servisin durdurulması gerekir; RLS geçişinden sonra eski anonim köprü çalışmaz.
