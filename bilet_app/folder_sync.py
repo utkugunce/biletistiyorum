@@ -32,7 +32,7 @@ def sanitize_filename_component(name):
 def _inside(root, relative):
     candidate = root / relative
     try:
-        candidate.resolve().relative_to(root)
+        candidate.resolve().relative_to(root.resolve())
     except ValueError:
         raise ValueError('Ticket path escapes its match folder') from None
     return candidate
@@ -77,7 +77,19 @@ def _save(root, journal):
             json.dump(journal, stream, ensure_ascii=False, indent=2)
             stream.flush()
             os.fsync(stream.fileno())
-        os.replace(temporary, root / JOURNAL_NAME)
+        target = root / JOURNAL_NAME
+        for attempt in range(5):
+            try:
+                os.replace(temporary, target)
+                break
+            except PermissionError:
+                if attempt == 4:
+                    try:
+                        shutil.copyfile(temporary, target)
+                        break
+                    except Exception:
+                        raise
+                time.sleep(0.05)
     finally:
         if temporary is not None:
             temporary.unlink(missing_ok=True)
@@ -147,7 +159,7 @@ def reconcile_folder(folder, assignments, path_map, errors=None):
                         source = owned
                 if source is None:
                     continue
-                source = _inside(root, Path(source).relative_to(root))
+                source = _inside(root, Path(source).resolve().relative_to(root))
                 if not source.is_file():
                     continue
                 group = sanitize_filename_component(assignment['group'].strip())
@@ -156,15 +168,15 @@ def reconcile_folder(folder, assignments, path_map, errors=None):
                 if part:
                     relative /= sanitize_filename_component(part)
                 destination = _inside(root, relative / source.name)
-                if (old and old['path'] == str(source.relative_to(root))
+                if (old and old['path'] == str(source.resolve().relative_to(root))
                         and not old.get('target') and source == destination
                         and old.get('mtime_ns') == source.stat().st_mtime_ns
                         and old.get('size') == source.stat().st_size):
                     continue
                 fingerprint = _digest(source)
                 record = {
-                    'path': str(source.relative_to(root)),
-                    'target': str(destination.relative_to(root)),
+                    'path': str(source.resolve().relative_to(root)),
+                    'target': str(destination.resolve().relative_to(root)),
                     'sha256': fingerprint,
                 }
                 managed[key] = record
@@ -194,7 +206,7 @@ def reconcile_folder(folder, assignments, path_map, errors=None):
                     # similarly named file elsewhere in this match directory.
                     continue
                 destination = _inside(root, source.name)
-                record['target'] = str(destination.relative_to(root))
+                record['target'] = str(destination.resolve().relative_to(root))
                 _save(root, journal)
                 _move_without_overwrite(source, destination, record['sha256'])
                 # Only forget ownership once the return really succeeded.

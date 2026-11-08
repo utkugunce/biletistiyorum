@@ -86,7 +86,7 @@ class CompanionTests(unittest.TestCase):
         class HTTPError(Exception):
             def __init__(self, status_code, detail):
                 self.status_code = status_code
-        source = ast.parse((APP / 'server.py').read_text())
+        source = ast.parse((APP / 'server.py').read_text(encoding='utf-8'))
         function = next(n for n in source.body if isinstance(n, ast.FunctionDef) and n.name == 'api_open_explorer')
         function.decorator_list = []
         namespace = {'Path': Path, 'Optional': typing.Optional, 'OpenExplorerRequest': object,
@@ -102,7 +102,7 @@ class CompanionTests(unittest.TestCase):
             self.assertEqual(caught.exception.status_code, 409)
             self.desktop.open_folder_on_user_desktop.assert_not_called()
             result = namespace['api_open_explorer'](group='Test Person', request_id='ZS-TEST')
-            self.assertEqual(Path(result['opened']), self.root / 'Test Person' / 'ZS-TEST')
+            self.assertEqual(Path(result['opened']).resolve(), (self.root / 'Test Person' / 'ZS-TEST').resolve())
 
     def test_inventory_metadata_has_no_absolute_paths_and_preserves_manual_owner(self):
         from ticket_inventory import build_inventory
@@ -141,7 +141,7 @@ class LocalSessionTests(unittest.TestCase):
         import secrets
         namespace = {**vars(typing), 'Path': Path, 'hashlib': hashlib, 'secrets': secrets,
                      'time': time, 'os': os}
-        source = ast.parse((APP / 'server.py').read_text())
+        source = ast.parse((APP / 'server.py').read_text(encoding='utf-8'))
         cls = next(node for node in source.body if isinstance(node, ast.ClassDef) and node.name == 'StateManager')
         exec(compile(ast.Module(body=[cls], type_ignores=[]), 'server.py', 'exec'), namespace)
         manager = namespace['StateManager'].__new__(namespace['StateManager'])
@@ -183,7 +183,7 @@ class LocalProxyTests(unittest.IsolatedAsyncioTestCase):
         result, cloud, next_handler, sync = await self.invoke('/api/state', 'GET')
         self.assertEqual(result.status_code, 200)
         self.assertEqual(result.data['match_info']['match_id'], 'fixture')
-        self.assertEqual(result.data['folder'], '/test/match')
+        self.assertEqual(Path(result.data['folder']), Path('/test/match'))
         self.assertEqual(cloud.call_args.args[3], 'fixture')
         next_handler.assert_not_called()
         sync.assert_not_called()
@@ -221,7 +221,7 @@ class LocalProxyTests(unittest.IsolatedAsyncioTestCase):
                                         verify_admin_token=lambda token: authenticated)
         namespace = {'Request': object, 'os': os, 'json': json, 're': __import__('re'),
                      'JSONResponse': Reply, 'run_in_threadpool': thread, 'state_mgr': manager}
-        source = ast.parse((APP / 'server.py').read_text())
+        source = ast.parse((APP / 'server.py').read_text(encoding='utf-8'))
         function = next(n for n in source.body if isinstance(n, ast.AsyncFunctionDef) and n.name == 'admin_auth_middleware')
         function.decorator_list = []
         exec(compile(ast.Module(body=[function], type_ignores=[]), 'server.py', 'exec'), namespace)
