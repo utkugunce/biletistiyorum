@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { getBaseData } from './admin.js';
 import { database, loadSystemState, mutateSystemState, authenticated, tokenHash, originGuard, fail, HttpError, matchMetadata, assignedKeys, matchState, requestMatch } from '../lib/store.js';
 
 export default async function handler(req, res) {
@@ -32,7 +33,7 @@ export default async function handler(req, res) {
     const access = tokenHash('tracking:' + idempotency);
     const input = {
       person, phone, requested_count: count, department: String(body.department || '').slice(0, 150),
-      target_block: String(body.target_block || '').slice(0, 30),
+      target_block: /saha/i.test(String(body.target_block || '')) ? 'SAHA' : String(body.target_block || '').trim().slice(0, 30),
       description: String(body.description || '').slice(0, 2000),
       ticket_type: String(body.ticket_type || 'Davetiye / Protokol').slice(0, 100),
       match_name: String(body.match_name || ''),
@@ -42,6 +43,8 @@ export default async function handler(req, res) {
       const match = matchMetadata(state).find(m => m.id === body.match_id || m.title === input.match_name ||
         m.title.replace('Kulübü ', '') === input.match_name.replace('Kulübü ', ''));
       if (!match) throw new HttpError(400, 'Aktif bir maç seçiniz.');
+      const template = state.match_templates?.[match.id] || getBaseData().base_state;
+      if (input.target_block && !Object.hasOwn(template.blocks || {}, input.target_block)) throw new HttpError(400, 'Bu maç için geçerli bir blok seçiniz.');
       const existing = state.request_operations?.[tokenHash(idempotency)];
       if (existing && existing.payload_hash !== payloadHash) throw new HttpError(409, 'Bu işlem anahtarı farklı bir talep için kullanılmış.');
       const id = existing?.id || `ZS-${crypto.randomUUID()}`;

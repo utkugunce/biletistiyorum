@@ -39,7 +39,7 @@ def api(route):
     elif path in ['excel/summary', 'excel/reload']: data = {'ok': True, 'requests': [row], 'total_requested': 1, 'total_assigned': 1, 'total_pending': 0}
     elif path == 'status': data = {'companion': None, 'commands': []}
     elif path == 'dispatch/list': data = {'recipients': [], 'pending_count': 0}
-    elif path == 'portal/matches': data = state['matches']
+    elif path == 'portal/matches': data = [{**m, 'blocks': ['102','121','SAHA']} for m in state['matches']]
     elif path == 'portal/staff': data = {'groups': [{'group': 'Test', 'members': ['Test Person']}]}
     elif path == 'portal/request' and request.method == 'POST':
         submissions.append({'payload': request.post_data_json, 'key': request.headers.get('idempotency-key')})
@@ -121,6 +121,7 @@ try:
         assert not page.locator('.staff-directory').get_attribute('open')
         if os.environ.get('UI_SCREENSHOT_DIR'):
             page.screenshot(path=str(Path(os.environ['UI_SCREENSHOT_DIR']) / 'portal-390.png'), full_page=True)
+        assert page.locator('#selectTargetBlock option').evaluate_all('(items)=>items.map(e=>e.value)') == ['102','121','SAHA','']
         field = page.locator('#inputTicketCount')
         field.fill(''); field.press_sequentially('30'); field.blur()
         assert field.input_value() == '30'

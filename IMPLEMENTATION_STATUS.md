@@ -39,7 +39,7 @@ kurulum ayrıca güncellenip yeniden başlatılmalıdır; Vercel bunu yapmaz.
 `DEPLOYMENT_CHECKLIST.md` dosyasındadır. Gizli anahtarlar Git'e veya sohbete
 konulmamalıdır. Mevcut talepler/sistem snapshot'ı ve manuel PDF'ler topluca silinmez.
 
-Otomatik sonuç: 39 Python testi, 31 Node API testi, sekiz ekran genişliğinde
+Otomatik sonuç: 39 Python testi, 33 Node API testi, sekiz ekran genişliğinde
 Chromium senaryoları ve kopya/sözdizimi kontrolleri geçti. Bunlar taklit veritabanı
 ve geçici dosyalarla çalışır. Üretim Supabase politikası, Vercel ortam kurulumu,
 yetkili gerçek backend erişimi ve Windows Explorer kabulü ayrı adımlardır.

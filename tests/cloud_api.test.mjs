@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import admin from '../api/admin.js';
 import request from '../api/request.js';
 import track from '../api/my-requests.js';
+import staff from '../api/staff.js';
 import { tokenHash, DEFAULT_MATCH_ID, loadSystemState, saveSystemState } from '../lib/store.js';
 
 process.env.SUPABASE_URL = 'https://database.test';
@@ -221,4 +222,15 @@ test('manual PDF ownership is protected from shift and compatibility allocation'
  const headers={authorization:'Bearer '+process.env.ZEREN_COMPANION_TOKEN};
  const assigned=await run(admin,req('/api/companion/request',{match_id:DEFAULT_MATCH_ID,operation:'assign',request_id:'REQ-B',request:{assigned_block:'102',assigned_seats:['3-2']}},'POST',false,headers));
  assert.equal(assigned.code,409);
+});
+
+test('portal rejects unsupported match blocks before registering an operation',async()=>{
+ reset();const result=await run(request,req('/api/portal/request',{person:'Test Person',phone:'05321234567',requested_count:1,match_name:'Zeren Spor - Kuzeyboru',target_block:'NOT-A-BLOCK'},'POST',false));
+ assert.equal(result.code,400);assert.equal(writes,0);assert.equal(rows.length,2);
+});
+
+test('staff directory is read-only and does not advertise cross-origin access',async()=>{
+ const denied=await run(staff,req('/api/portal/staff',{},'POST',false));assert.equal(denied.code,405);
+ const allowed=await run(staff,req('/api/portal/staff',{},'GET',false));assert.equal(allowed.code,200);
+ assert.equal(allowed.headers['Access-Control-Allow-Origin'],undefined);
 });
