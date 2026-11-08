@@ -1,0 +1,9 @@
+bilet_app/
+biletistiyorum/
+tests/
+scripts/
+migrations/
+work/
+*.md
+*.py
+.env*

@@ -2,15 +2,53 @@
   "version": 2,
   "name": "biletistiyorum",
   "rewrites": [
-    { "source": "/api/portal/matches", "destination": "/api/matches" },
-    { "source": "/api/portal/staff", "destination": "/api/staff" },
-    { "source": "/api/portal/my-requests", "destination": "/api/my-requests" },
-    { "source": "/api/portal/request", "destination": "/api/request" },
-    { "source": "/api/:path*", "destination": "/api/admin" },
-    { "source": "/admin", "destination": "/admin.html" },
-    { "source": "/panel", "destination": "/admin.html" },
-    { "source": "/yonetim", "destination": "/admin.html" },
-    { "source": "/bilet-istiyorum", "destination": "/index.html" },
-    { "source": "/talep", "destination": "/index.html" }
+    {
+      "source": "/bilet_app/:path*",
+      "destination": "/api/admin"
+    },
+    {
+      "source": "/biletistiyorum/:path*",
+      "destination": "/api/admin"
+    },
+    {
+      "source": "/api/portal/matches",
+      "destination": "/api/matches"
+    },
+    {
+      "source": "/api/portal/staff",
+      "destination": "/api/staff"
+    },
+    {
+      "source": "/api/portal/my-requests",
+      "destination": "/api/my-requests"
+    },
+    {
+      "source": "/api/portal/request",
+      "destination": "/api/request"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "/api/admin"
+    },
+    {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/panel",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/yonetim",
+      "destination": "/admin.html"
+    },
+    {
+      "source": "/bilet-istiyorum",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/talep",
+      "destination": "/index.html"
+    }
   ]
 }
