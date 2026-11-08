@@ -525,12 +525,17 @@ function setupStepper() {
   const chips = document.querySelectorAll(".cnt-chip");
   if (!countInput) return;
 
-  function setCount(n) {
-    let val = Math.max(1, Math.min(100, parseInt(n, 10) || 1));
-    countInput.value = val;
+  function updateCountChips() {
+    const val = Number(countInput.value);
     chips.forEach((c) => {
       c.classList.toggle("active", parseInt(c.dataset.cnt, 10) === val);
     });
+  }
+
+  function setCount(n) {
+    const val = Math.max(1, Math.min(100, parseInt(n, 10) || 1));
+    countInput.value = val;
+    updateCountChips();
   }
 
   if (btnMinus) {
@@ -545,8 +550,10 @@ function setupStepper() {
     });
   }
 
-  countInput.addEventListener("input", (e) => {
-    setCount(e.target.value);
+  // Allow clearing and typing multiple digits without rewriting the input.
+  countInput.addEventListener("input", updateCountChips);
+  countInput.addEventListener("blur", () => {
+    setCount(countInput.value);
   });
 
   chips.forEach((c) => {

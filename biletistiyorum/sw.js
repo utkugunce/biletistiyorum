@@ -1,5 +1,5 @@
 // ZEREN SPOR KULÜBÜ — BİLET PORTALI SERVICE WORKER (PWA)
-const CACHE_NAME = "zeren-bilet-pwa-v1";
+const CACHE_NAME = "zeren-bilet-pwa-v2";
 
 const PRECACHE_ASSETS = [
   "/",
