@@ -14,7 +14,7 @@ steps = [
     ['node', '--test', 'tests/cloud_api.test.mjs'],
     [sys.executable, 'scripts/sync_copies.py', '--check'],
 ]
-for source in ['app.js', 'bilet_istiyorum.js', 'accessibility.js', 'api/admin.js', 'api/request.js', 'api/my-requests.js', 'api/matches.js', 'lib/store.js', 'lib/auth.js', 'lib/admin-actions.js']:
+for source in ['app.js', 'bilet_istiyorum.js', 'accessibility.js', 'api/admin.js', 'api/request.js', 'api/my-requests.js', 'api/matches.js', 'lib/traffic.js', 'lib/store.js', 'lib/auth.js', 'lib/admin-actions.js']:
     steps.append(['node', '--check', source])
 steps.append([sys.executable, '-m', 'py_compile', 'bilet_app/server.py', 'bilet_app/portal_storage.py',
               'bilet_app/sync_helper.py', 'bilet_app/folder_sync.py', 'bilet_app/cloud_bridge.py',

@@ -39,7 +39,22 @@ kurulum ayrıca güncellenip yeniden başlatılmalıdır; Vercel bunu yapmaz.
 `DEPLOYMENT_CHECKLIST.md` dosyasındadır. Gizli anahtarlar Git'e veya sohbete
 konulmamalıdır. Mevcut talepler/sistem snapshot'ı ve manuel PDF'ler topluca silinmez.
 
-Otomatik sonuç: 39 Python testi, 33 Node API testi, sekiz ekran genişliğinde
+Otomatik sonuç: 39 Python testi, 36 Node API testi, sekiz ekran genişliğinde
 Chromium senaryoları ve kopya/sözdizimi kontrolleri geçti. Bunlar taklit veritabanı
 ve geçici dosyalarla çalışır. Üretim Supabase politikası, Vercel ortam kurulumu,
 yetkili gerçek backend erişimi ve Windows Explorer kabulü ayrı adımlardır.
+
+## Son main korumalarıyla birleştirme
+
+`fb8c425` içindeki güvenlik başlıkları, statik personel dizini önbelleği ve
+IP başına talep/takip sınırları güvenli backend ile birleştirildi. Dinamik maç
+listesi yalnız başarılı yanıtta en çok beş dakika edge cache kullanır; hata
+önbelleğe alınmaz. Origin kontrolünde alt dizeye güvenilmez. IP sayaçları
+hash'li ve boyutu sınırlı süreç belleğindedir; dağıtık DDoS koruması değildir.
+Üretim için Vercel edge koruması ayrıca yapılandırılabilir.
+
+Kullanıcı, üretim geçişinden önce Supabase tablosunun 12 kaydını yerel dosyaya
+yedeklediğini doğruladı. Vercel Preview'da dört ortam ayarı eklendikten sonra
+maç listesi API'sinin veritabanından başarılı yanıtı kullanıcı tarafından
+korumalı önizleme tarayıcısında doğrulandı. Bu doğrulama henüz üretim RLS
+geçişi veya Windows kabulü anlamına gelmez.

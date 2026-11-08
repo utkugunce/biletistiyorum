@@ -8,6 +8,11 @@ export class HttpError extends Error {
 export function headers(extra = {}) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_KEY;
   if (!key) throw new HttpError(503, 'Sunucu veritabanı anahtarı yapılandırılmamış.');
+  if (key.startsWith('eyJ')) {
+    let role;
+    try { role = JSON.parse(Buffer.from(key.split('.')[1], 'base64url').toString()).role; } catch { /* invalid legacy key */ }
+    if (role !== 'service_role') throw new HttpError(503, 'Sunucu için Supabase service_role anahtarı kullanılmalıdır.');
+  }
   return { apikey: key, ...(key.startsWith('eyJ') ? { Authorization: `Bearer ${key}` } : {}),
     'Content-Type': 'application/json', ...extra };
 }

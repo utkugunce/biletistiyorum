@@ -1,5 +1,5 @@
 export default function handler(req, res) {
-  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("Cache-Control", "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400");
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "GET") return res.status(405).json({ detail: "GET yöntemi gerekli." });
 

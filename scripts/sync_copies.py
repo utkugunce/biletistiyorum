@@ -22,6 +22,7 @@ REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 MAPPINGS = [
     (".vercelignore", ["biletistiyorum/.vercelignore"]),
     ("accessibility.js", ["static/accessibility.js", "biletistiyorum/static/accessibility.js", "bilet_app/static/accessibility.js"]),
+    ("lib/traffic.js", ["biletistiyorum/lib/traffic.js"]),
     ("lib/store.js", ["biletistiyorum/lib/store.js"]),
     ("lib/auth.js", ["biletistiyorum/lib/auth.js"]),
     ("lib/admin-actions.js", ["biletistiyorum/lib/admin-actions.js"]),

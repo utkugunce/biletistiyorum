@@ -1,3 +1,4 @@
+import { checkTraffic } from '../lib/traffic.js';
 import { database, loadSystemState, tokenHash, assignedKeys, requestMatch, matchState, fail, HttpError } from '../lib/store.js';
 
 export default async function handler(req, res) {
@@ -5,6 +6,7 @@ export default async function handler(req, res) {
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'GET') return res.status(405).json({ detail: 'Method not allowed' });
   try {
+    checkTraffic(req, res, 'portal-track', 25);
     const token = String(req.headers['x-tracking-token'] || '');
     const split = token.lastIndexOf('.');
     const id = token.slice(0, split), secret = token.slice(split + 1);

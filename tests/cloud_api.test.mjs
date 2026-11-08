@@ -12,10 +12,12 @@ process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-only-service-key';
 process.env.ZEREN_COMPANION_TOKEN = 'test-only-companion-token-at-least-32-characters';
 delete process.env.VERCEL;
 const SESSION = 'test-only-session';
+let clientSequence=0;
 let state, rows, writes, unavailable, barrierReads, barrier, release;
 const fixtureRow = (id, extra={}) => ({ id, person: 'Test Person', requested_count: 1,
   match_name: 'Zeren Spor - Kuzeyboru', target_block: '102', phone: '05321234567', assigned_seats: [], ...extra });
 function reset() {
+  clientSequence++;
   state = { version: 7, virtual_assignments: {}, sent_map: {}, sessions: { [tokenHash(SESSION)]: { expires_at: Date.now()+86400000 } } };
   rows = [fixtureRow('REQ-A'), fixtureRow('REQ-B', { person: 'Other Person' })];
   writes=0; unavailable=false; barrierReads=0; barrier=null;
@@ -47,7 +49,7 @@ globalThis.fetch = async (url, options={}) => {
   throw new Error('Unexpected mocked database operation');
 };
 function req(url, body={}, method='POST', authenticated=true, extra={}) {
-  return {url,body,method,headers:{host:'app.test', ...(authenticated?{authorization:'Bearer '+SESSION}:{}), ...extra},socket:{remoteAddress:'127.0.0.1'}};
+  return {url,body,method,headers:{host:'app.test', ...(authenticated?{authorization:'Bearer '+SESSION}:{}), ...extra},socket:{remoteAddress:'192.0.2.'+clientSequence}};
 }
 function response() { return {code:200,headers:{},setHeader(k,v){this.headers[k]=v;},status(n){this.code=n;return this;},json(body){this.body=body;return this;},end(){return this;},send(body){this.body=body;return this;}}; }
 async function run(handler, request) { const res=response();await handler(request,res);return res; }
@@ -233,4 +235,24 @@ test('staff directory is read-only and does not advertise cross-origin access',a
  const denied=await run(staff,req('/api/portal/staff',{},'POST',false));assert.equal(denied.code,405);
  const allowed=await run(staff,req('/api/portal/staff',{},'GET',false));assert.equal(allowed.code,200);
  assert.equal(allowed.headers['Access-Control-Allow-Origin'],undefined);
+});
+
+test('portal creation limits repeated submissions per client with retry guidance',async()=>{
+ reset();const body={person:'Test Person',phone:'05321234567',requested_count:1,match_name:'Zeren Spor - Kuzeyboru',target_block:'102'};
+ const extra={'idempotency-key':'rate-test-'.repeat(5)};
+ for(let i=0;i<5;i++) assert.equal((await run(request,req('/api/portal/request',body,'POST',false,extra))).code,200);
+ const limited=await run(request,req('/api/portal/request',body,'POST',false,extra));
+ assert.equal(limited.code,429);assert.ok(Number(limited.headers['Retry-After'])>0);
+ assert.equal(rows.filter(r=>r.id.startsWith('ZS-')).length,1);
+});
+test('tracking abuse is throttled before any database access',async()=>{
+ reset();for(let i=0;i<25;i++) assert.equal((await run(track,req('/api/portal/my-requests',{},'GET',false))).code,401);
+ const limited=await run(track,req('/api/portal/my-requests',{},'GET',false));assert.equal(limited.code,429);assert.equal(writes,0);
+});
+
+test('a legacy anon key cannot masquerade as the server database credential',async()=>{
+ reset();const previous=process.env.SUPABASE_SERVICE_ROLE_KEY;
+ process.env.SUPABASE_SERVICE_ROLE_KEY='eyJhbGciOiJIUzI1NiJ9.'+Buffer.from(JSON.stringify({role:'anon'})).toString('base64url')+'.test';
+ try {const result=await run(admin,req('/api/state',{},'GET'));assert.equal(result.code,503);assert.match(result.body.detail,/service_role/);assert.equal(writes,0);}
+ finally {process.env.SUPABASE_SERVICE_ROLE_KEY=previous;}
 });

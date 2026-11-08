@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { checkTraffic } from '../lib/traffic.js';
 import { getBaseData } from './admin.js';
 import { database, loadSystemState, mutateSystemState, authenticated, tokenHash, originGuard, fail, HttpError, matchMetadata, assignedKeys, matchState, requestMatch } from '../lib/store.js';
 
@@ -21,6 +22,7 @@ export default async function handler(req, res) {
       }));
     }
     if (req.method !== 'POST') return res.status(405).json({ detail: 'Method not allowed' });
+    checkTraffic(req, res, 'portal-create', 5);
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {};
     const count = Number(body.requested_count);
     const person = String(body.person || '').trim();
@@ -28,6 +30,7 @@ export default async function handler(req, res) {
     if (!person || person.length > 150) throw new HttpError(400, 'Geçerli ad soyad giriniz.');
     if (!Number.isInteger(count) || count < 1 || count > 100) throw new HttpError(400, 'Bilet adedi 1–100 arasında tam sayı olmalıdır.');
     if (!/^\+?\d{10,15}$/.test(phone)) throw new HttpError(400, 'Geçerli WhatsApp telefon numarası giriniz.');
+    if (person.length > 100 || String(body.description || '').length > 1000 || String(body.phone || '').length > 30) throw new HttpError(400, 'Geçersiz veya aşırı uzun girdi.');
     const idempotency = String(req.headers['idempotency-key'] || crypto.randomBytes(32).toString('hex'));
     if (!/^[\w-]{32,128}$/.test(idempotency)) throw new HttpError(400, 'Geçersiz işlem anahtarı.');
     const access = tokenHash('tracking:' + idempotency);
