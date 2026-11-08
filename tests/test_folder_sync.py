@@ -39,6 +39,21 @@ class FolderSyncTests(unittest.TestCase):
     def journal(self):
         return json.loads((self.root / folder_sync.JOURNAL_NAME).read_text())
 
+    def test_locked_journal_remains_intact_after_all_atomic_replace_retries(self):
+        self.assigned_ticket()
+        before = (self.root / folder_sync.JOURNAL_NAME).read_bytes()
+        changed = self.journal()
+        changed['managed'] = {}
+        with patch.object(folder_sync.os, 'replace', side_effect=PermissionError('locked')) as replace, \
+                patch.object(folder_sync.time, 'sleep'), \
+                patch.object(folder_sync.shutil, 'copyfile') as copy:
+            with self.assertRaises(PermissionError):
+                folder_sync._save(self.root, changed)
+            self.assertEqual(replace.call_count, 5)
+            copy.assert_not_called()
+        self.assertEqual((self.root / folder_sync.JOURNAL_NAME).read_bytes(), before)
+        self.assertFalse(list(self.root.glob(folder_sync.JOURNAL_NAME + '.*.tmp')))
+
     def test_unknown_manual_ticket_is_preserved(self):
         path = self.ticket('Manual/ZS-MANUAL')
         folder_sync.reconcile_folder(self.root, {}, {KEY: path})

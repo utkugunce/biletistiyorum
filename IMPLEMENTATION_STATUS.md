@@ -40,7 +40,7 @@ değişkenlerini Vercel’e ekledi. Tam geçiş sırası
 `DEPLOYMENT_CHECKLIST.md` dosyasındadır. Gizli anahtarlar Git'e veya sohbete
 konulmamalıdır. Mevcut talepler/sistem snapshot'ı ve manuel PDF'ler topluca silinmez.
 
-Otomatik sonuç: 39 Python testi, 40 Node API testi, sekiz ekran genişliğinde
+Otomatik sonuç: 40 Python testi, 40 Node API testi, sekiz ekran genişliğinde
 Chromium senaryoları ve kopya/sözdizimi kontrolleri geçti. Bunlar taklit veritabanı
 ve geçici dosyalarla çalışır. Üretim Supabase politikası, Vercel ortam kurulumu,
 yetkili gerçek backend erişimi ve Windows Explorer kabulü ayrı adımlardır.
@@ -94,3 +94,8 @@ koltuk açıklaması ve gönderim yüzdesi alanları da sözleşmeye eklendi.
 Telefon önceliği, eski rehber, companion görünümü, belirsiz isim ve dağıtım alanları
 regresyonlarıyla Node API testlerinin sayısı 40 oldu. Son düzeltmenin canlı
 telefon görünümü kullanıcıyla ayrıca doğrulanmalıdır.
+
+Son eşzamanlı Windows retry değişikliği birleştirilirken beş kez atomik replace
+tekrarı korundu; kalıcı kilitte journal dosyasını atomik olmayan copy ile ezme
+fallback'i kaldırıldı. Kilitli journal'ın tüm denemeler sonrasında aynı içerikle
+korunduğu regresyonla doğrulandı. Bu nedenle Python test sayısı 40 oldu.

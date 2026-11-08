@@ -84,11 +84,9 @@ def _save(root, journal):
                 break
             except PermissionError:
                 if attempt == 4:
-                    try:
-                        shutil.copyfile(temporary, target)
-                        break
-                    except Exception:
-                        raise
+                    # Preserve the existing ownership journal if Windows keeps
+                    # it locked. An in-place copy can leave truncated JSON.
+                    raise
                 time.sleep(0.05)
     finally:
         if temporary is not None:
