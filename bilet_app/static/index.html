@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <link rel="icon" type="image/png" href="/static/zeren_logo.png" />
-  <link rel="stylesheet" href="/static/styles.css?v=20261108-5" />
+  <link rel="stylesheet" href="/static/styles.css?v=20261108-6" />
   <!-- PWA Meta Tags & Manifest -->
   <meta name="theme-color" content="#3b0764" />
   <meta name="mobile-web-app-capable" content="yes" />
@@ -117,9 +117,8 @@
       </div>
     </div>
 
-    <!-- Sağ: Servis Durumu + WhatsApp + Talepler + Diğer İşlemler Dropdown (U02, T10) -->
-    <div class="topbar-right">
-            <div class="stats-badge-group">
+    <div class="topbar-summary" aria-label="Maç bilet özeti">
+      <div class="stats-badge-group">
         <span class="stat-chip" title="Bu maçtaki toplam bilet/koltuk">
           <strong id="statTotalPdf">0</strong> PDF
         </span>
@@ -130,6 +129,11 @@
           <strong id="statAvailablePdf">0</strong> Boş bilet
         </span>
       </div>
+    </div>
+
+    <!-- Sağ: Servis Durumu + WhatsApp + Talepler + Diğer İşlemler Dropdown (U02, T10) -->
+    <div class="topbar-right">
+
 
       <div id="localServiceStatusBadge" class="local-status-pill offline" title="Windows Yerel PDF Servisi Durumu">
         <span class="status-dot"></span>
@@ -221,10 +225,7 @@
       <span class="toolbar-label">Blok:</span>
       <select id="selectQuickBlock" class="block-dropdown" title="30 Blok Arasından Seç"></select>
       <div id="activeBlocksPills" class="active-block-pills"></div>
-      <button class="btn btn-outline btn-xs" id="btnOpenArenaFromBar" title="Görsel salon haritasını aç">
-        <i class="ph ph-stadium"></i>
-        <span>Salon Haritası</span>
-      </button>
+
     </div>
 
     <div class="toolbar-center">
@@ -465,17 +466,17 @@
       <div class="sidebar-tabs-bar" role="tablist">
         <button class="sidebar-nav-tab active" id="tabBtnExcel" data-panel="excel" title="Atanmayı veya gönderilmeyi bekleyen talepler">
           <i class="ph-bold ph-tray"></i>
-          <span>Gelen Talepler</span>
+          <span class="sidebar-tab-label">Gelen Talepler</span>
           <span class="tab-badge" id="badgeExcelPendingCount">0</span>
         </button>
         <button class="sidebar-nav-tab" id="tabBtnSent" data-panel="sent" title="WhatsApp üzerinden biletleri gönderilmiş talepler">
           <i class="ph-bold ph-paper-plane-tilt"></i>
-          <span>Gönderilen Talepler</span>
+          <span class="sidebar-tab-label">Gönderilen Talepler</span>
           <span class="tab-badge tab-badge-success" id="badgeExcelSentCount">0</span>
         </button>
         <button class="sidebar-nav-tab" id="tabBtnDistribution" data-panel="dist" title="Kişi ve grup bazlı koltuk dağılım listesi">
           <i class="ph-bold ph-users-three"></i>
-          <span>Dağılım Özeti</span>
+          <span class="sidebar-tab-label">Dağılım Özeti</span>
           <span class="tab-badge" id="badgeAssignedPeopleCount">0</span>
         </button>
       </div>
@@ -914,8 +915,8 @@
   <!-- TOAST BİLDİRİMİ -->
   <div id="toastContainer" class="toast-stack"></div>
 
-  <script src="/static/app.js?v=20261108-5"></script>
-  <script src="/static/accessibility.js?v=20261108-5"></script>
-  <script src="/static/pwa-update.js?v=20261108-5"></script>
+  <script src="/static/app.js?v=20261108-6"></script>
+  <script src="/static/accessibility.js?v=20261108-6"></script>
+  <script src="/static/pwa-update.js?v=20261108-6"></script>
 </body>
 </html>

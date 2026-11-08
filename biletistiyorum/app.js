@@ -248,8 +248,8 @@ function renderTopBar() {
     opt.value = m.folder;
     const cleanT = (m.title || "Maç").replace(/\s*-\s*\d{3}\s+\d+\s*-\s*-?\d+$/, "");
     const dPart = m.date ? ` (${m.date})` : "";
-    opt.textContent = `${cleanT}${dPart}`;
-    if (m.folder === appState.folder) matchSelect.title = opt.textContent;
+    opt.textContent = cleanT;
+    if (m.folder === appState.folder) matchSelect.title = `${cleanT}${dPart}`;
     if (m.folder.toLowerCase() === appState.folder.toLowerCase()) {
       opt.selected = true;
     }
@@ -1668,7 +1668,7 @@ function bindUIEvents() {
 
   document.getElementById("tabBtnSeating").addEventListener("click", () => switchMainView("seating"));
   document.getElementById("tabBtnArena").addEventListener("click", () => switchMainView("arena"));
-  document.getElementById("btnOpenArenaFromBar").addEventListener("click", () => switchMainView("arena"));
+  document.getElementById("btnOpenArenaFromBar")?.addEventListener("click", () => switchMainView("arena"));
 
   // Sağ Sütun Sekmeleri (Excel Talepleri vs Dağılım Listesi)
   document.getElementById("tabBtnExcel").addEventListener("click", () => switchSidebarTab("pending"));

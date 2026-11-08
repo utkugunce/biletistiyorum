@@ -304,7 +304,7 @@ yapılmalıdır; Linux üzerindeki dosya testleri bu kabul testinin yerine geçm
   `lib/` altında ayrılmıştır; yeni framework veya veritabanı tablosu gerekmez.
 - `python scripts/sync_copies.py` kök kaynakları dağıtım kopyalarına taşır;
   `--check` eksik/farklı kopyada hata verir. Eşleme tablosu aynı script içindedir.
-- PWA sürümü `zeren-bilet-pwa-v5` olmuştur. Çevrimdışı API başarısı taklit edilmez.
+- PWA sürümü `zeren-bilet-pwa-v6` olmuştur. Çevrimdışı API başarısı taklit edilmez.
 - Ortam kurulumu, veri yedeği, RLS geçiş sırası, otomatik kontroller ve gerçek
   Windows kabulü için `DEPLOYMENT_CHECKLIST.md` temel alınır. Yönetim bağlantısı
   olmadan yeni güvenli backend’i üretime almak mevcut sistemi kesebilir;

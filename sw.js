@@ -1,17 +1,17 @@
 // ZEREN SPOR KULÜBÜ — BİLET PORTALI SERVICE WORKER (PWA)
-const CACHE_NAME = "zeren-bilet-pwa-v5";
+const CACHE_NAME = "zeren-bilet-pwa-v6";
 
 const PRECACHE_ASSETS = [
   "/",
   "/index.html",
   "/admin",
   "/admin.html",
-  "/static/styles.css?v=20261108-5",
-  "/static/app.js?v=20261108-5",
-  "/static/accessibility.js?v=20261108-5",
-  "/static/pwa-update.js?v=20261108-5",
-  "/static/bilet_istiyorum.css?v=20261108-5",
-  "/static/bilet_istiyorum.js?v=20261108-5",
+  "/static/styles.css?v=20261108-6",
+  "/static/app.js?v=20261108-6",
+  "/static/accessibility.js?v=20261108-6",
+  "/static/pwa-update.js?v=20261108-6",
+  "/static/bilet_istiyorum.css?v=20261108-6",
+  "/static/bilet_istiyorum.js?v=20261108-6",
   "/bilet_istiyorum.css",
   "/bilet_istiyorum.js",
   "/zeren_logo.png",

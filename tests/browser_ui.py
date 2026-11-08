@@ -54,6 +54,24 @@ def api(route):
         else: data = []
     route.fulfill(status=status, content_type='application/json', body=json.dumps(data))
 
+def check_request_tab_spacing(page):
+    result = page.evaluate("""() => {
+      const tabs = [...document.querySelectorAll('.sidebar-nav-tab')];
+      const overlap = (a,b) => Math.min(a.right,b.right)>Math.max(a.left,b.left)+1 && Math.min(a.bottom,b.bottom)>Math.max(a.top,b.top)+1;
+      return tabs.flatMap(tab => {
+        const bounds = tab.getBoundingClientRect();
+        const label = tab.querySelector('.sidebar-tab-label');
+        const other = [...tab.querySelectorAll('i,.tab-badge')];
+        const parts = [label,...other];
+        return parts.some(el => {
+          const r=el.getBoundingClientRect();
+          return r.left<bounds.left-1 || r.right>bounds.right+1 || r.top<bounds.top-1 || r.bottom>bounds.bottom+1 || el.scrollWidth>el.clientWidth+1;
+        }) || other.some(el=>overlap(label.getBoundingClientRect(),el.getBoundingClientRect())) ? [tab.id] : [];
+      });
+    }""")
+    assert not result, result
+
+
 try:
     with sync_playwright() as p:
         arguments = ['--no-sandbox']
@@ -82,7 +100,18 @@ try:
             if os.environ.get('UI_SCREENSHOT_DIR') and width in (390, 1440):
                 directory = Path(os.environ['UI_SCREENSHOT_DIR']); directory.mkdir(parents=True, exist_ok=True)
                 page.screenshot(path=str(directory / f'admin-{width}.png'), full_page=True)
-            print('PASS admin controls and menu', width)
+            assert page.locator('#matchDateBadge').is_visible()
+            assert '08.11.2026' not in page.locator('#selectMatchSwitcher option:checked').inner_text()
+            if width <= 768:
+                page.locator('#tabBtnMobileSidebar').click()
+            page.locator('#badgeExcelPendingCount').evaluate("el=>el.textContent='108'")
+            page.locator('#badgeExcelSentCount').evaluate("el=>el.textContent='17'")
+            check_request_tab_spacing(page)
+            if os.environ.get('UI_SCREENSHOT_DIR') and width == 390:
+                page.screenshot(path=str(Path(os.environ['UI_SCREENSHOT_DIR']) / 'sidebar-390.png'), full_page=True)
+            if width <= 768:
+                page.keyboard.press('Escape')
+            print('PASS admin controls, menu, match date and request tab spacing', width)
         page.set_viewport_size({'width': 1440, 'height': 1000})
         mark = page.locator('[data-act="mark-sent"]')
         assert mark.is_visible()

@@ -127,5 +127,19 @@ Kod `Uygulama`, maçlar `Zeren_Bilet_Maclar`, eski kişi klasörleri ve kayıtla
 `Arsiv` altında hazırlanır. Dışarıda kalıcı program/maç/arşiv hedefi yoktur.
 Tek başlatıcı kullanıcı ortamındaki anahtarı yükler; anahtarı dosyaya yazmaz.
 Önizleme ve doğrulanmış kopya aracı 10 taşıma regresyonuyla doğrulandı; toplam
-Python testi sayısı 50 oldu. Gerçek Windows önizlemesi, taşıması ve yeni
-konumdan servis kabulü bu kayıtta henüz bekliyor.
+Python testi sayısı 50 oldu. Windows taşıması doğrulama kaydıyla tamamlandı. Kullanıcı yeni başlatıcıyla
+servisin bağlandığını ve PDF klasörünün yeni konumdan açıldığını doğruladı.
+
+## Yönetim üst bölümü ve talep sekmelerinin yerleşimi
+
+Talep sekmeleri eşit genişlikte kutulara ayrıldı; simge/sayaç ve başlık ayrı
+satırlarda tutuluyor. Üç haneli sayaçta dahi başlıklar birbirine taşmıyor.
+Üst menü maç/işlem ve görünüm/özet olarak sabit satırlara ayrıldı. Yeni Maç,
+maç bilgisinin yanında kalır; tarih seçicide tekrar etmez ve mobilde görünür.
+Blok kontrolleri ile metrik özeti ayrı hizalanır. Salon haritasına geçiş ana
+görünüm sekmesinde korunarak tekrarlanan araç çubuğu düğmesi kaldırıldı.
+
+Sekiz genişlikte gerçek Chromium testi; metin/sayaç çakışması, taşma, menü,
+tarih, modal, gönderim işareti ve temel akışları doğruladı. PWA güncelleme ve
+offline davranışı testi de geçti. Statik kopyalar eşitlendi; önbellek sürümü v6.
+Bu değişiklik fiziksel PDF düzenini veya Windows senkronizasyonunu değiştirmez.
