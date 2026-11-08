@@ -119,6 +119,18 @@
 
     <!-- Sağ: Servis Durumu + WhatsApp + Talepler + Diğer İşlemler Dropdown (U02, T10) -->
     <div class="topbar-right">
+            <div class="stats-badge-group">
+        <span class="stat-chip" title="Bu maçtaki toplam bilet/koltuk">
+          <strong id="statTotalPdf">0</strong> Bilet
+        </span>
+        <span class="stat-chip stat-chip-assigned" title="Kişilere dağıtılan bilet sayısı">
+          <strong id="statAssignedPdf">0</strong> Dağıtılan
+        </span>
+        <span class="stat-chip stat-chip-available" title="Boşta veya 'diğer' klasöründeki biletler">
+          <strong id="statAvailablePdf">0</strong> Boş/Diğer
+        </span>
+      </div>
+
       <div id="localServiceStatusBadge" class="local-status-pill online" title="Windows Yerel PDF Servisi Durumu">
         <span class="status-dot"></span>
         <span class="status-text">Yerel Servis: Bağlı</span>
@@ -201,6 +213,7 @@
   </header>
 
   <!-- ========================================================= -->
+    <!-- ========================================================= -->
   <!-- 2. BLOK VE KONTROL MENÜSÜ (RESPONSIVE TOOLBAR)            -->
   <!-- ========================================================= -->
   <div class="block-toolbar">
@@ -235,8 +248,44 @@
           Kaydır / Takas
         </button>
       </div>
+
+      <select id="selectColorMode" class="clean-select-xs" title="Renklendirme Modu">
+        <option value="groups">Grup Renkleri</option>
+        <option value="classic">Klasik (Kırmızı / Turuncu)</option>
+      </select>
+
+      <button class="btn btn-outline btn-xs" id="btnPreviewOrigBlock" title="Bu bloğun resmi Biletinial şemasını göster">
+        <i class="ph ph-eye"></i>
+        <span>Orijinal Şema</span>
+      </button>
     </div>
   </div>
+
+  <!-- ========================================================= -->
+  <!-- 2. ANA ÇALIŞMA ALANI (KOLTUK PLANI + SAĞ PANEL)          -->
+  <!-- ========================================================= -->
+  <div class="main-layout">
+    <!-- GÖRÜNÜM 1: KOLTUK PLANI SAHNESİ -->
+    <main class="seating-view" id="viewSeating">
+      <!-- Kaydırma Modu Bilgi Bandı -->
+      <div class="shift-banner hidden" id="modeInfoBanner"></div>
+
+      <!-- KOLTUK IZGARASI ALANI (KAYDIRMA BUG'I DÜZELTİLMİŞ) -->
+      <div class="canvas-wrapper" id="seatingStageWrapper">
+        <div id="courtIndicatorTop" class="court-direction-bar court-bar-top hidden">
+          ▲ SAHA YÖNÜ (VOLEYBOL KORTU) ▲
+        </div>
+
+        <div class="canvas-middle-row" id="seatingStage">
+          <div id="courtIndicatorLeft" class="court-direction-bar court-bar-side hidden">
+            ◄ SAHA
+          </div>
+
+          <div class="seating-scroll-container" id="seatingGridScroll">
+            <div class="seating-sheet">
+              <div id="seatingGridContainer" class="seating-grid-table"></div>
+            </div>
+          </div>
 
           <div id="courtIndicatorRight" class="court-direction-bar court-bar-side hidden">
             SAHA ►

@@ -272,10 +272,14 @@ function renderTopBar() {
     dateEl.classList.add("hidden");
   }
 
-  document.getElementById("statTotalPdf").textContent = appState.total_tickets;
-  document.getElementById("statAssignedPdf").textContent = appState.assigned_tickets;
-  document.getElementById("statAvailablePdf").textContent =
-    (appState.diger_tickets || 0) + (appState.unassigned_tickets || 0);
+  const statTot = document.getElementById("statTotalPdf");
+  if (statTot) statTot.textContent = appState.total_tickets;
+  const statAss = document.getElementById("statAssignedPdf");
+  if (statAss) statAss.textContent = appState.assigned_tickets;
+  const statAvail = document.getElementById("statAvailablePdf");
+  if (statAvail) {
+    statAvail.textContent = (appState.diger_tickets || 0) + (appState.unassigned_tickets || 0);
+  }
 
   document.getElementById("btnUndo").disabled = !appState.can_undo;
   document.getElementById("btnRedo").disabled = !appState.can_redo;
