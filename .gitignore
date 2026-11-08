@@ -36,3 +36,7 @@ utku/
 
 # Local per-match ownership journal (contains operational file paths)
 .zeren-folder-sync.json
+
+.env
+.env.*
+!.env.example

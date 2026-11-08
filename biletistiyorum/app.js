@@ -395,7 +395,7 @@ function renderQuickGroupChips() {
     btn.type = "button";
     btn.className = "group-chip";
     btn.draggable = false;
-    btn.innerHTML = `<span class="chip-dot" style="background:${ch.color};"></span><span>${ch.label}</span>`;
+    btn.innerHTML = `<span class="chip-dot" style="background:${ch.color};"></span><span>${escapeHtml(ch.label)}</span>`;
     btn.title = `Seçili koltukları '${ch.label}' kişisine ata`;
     btn.addEventListener("click", () => {
       assignSelectedSeats(ch.group, ch.subgroup);
@@ -562,7 +562,7 @@ function renderSeatingStage() {
         cell.title = `${bInfo.id} Blok · Sıra ${rNum} Koltuk ${seatNum}\nKişi/Grup: ${ticket.label || "Ana Klasör"}${pdfNote}`;
         cell.innerHTML = `
           <span class="seat-num">${seatNum}</span>
-          <span class="seat-owner" style="${ownerShort.length > 10 ? 'font-size:7.5px;letter-spacing:-0.03em;' : ''}">${ownerShort}</span>
+          <span class="seat-owner" style="${ownerShort.length > 10 ? 'font-size:7.5px;letter-spacing:-0.03em;' : ''}">${escapeHtml(ownerShort)}</span>
         `;
       }
 
@@ -589,7 +589,7 @@ function renderBlockLegend(bInfo) {
   const bar = document.getElementById("blockLegendBar");
   bar.innerHTML = "";
 
-  const counts = {};
+  const counts = Object.create(null);
   Object.values(bInfo.tickets || {}).forEach((t) => {
     const lbl = t.group ? t.group : "Boşta";
     const col = t.status === "assigned" ? t.color : (t.status === "diger" ? "#D97706" : "#FFFFFF");
@@ -604,7 +604,7 @@ function renderBlockLegend(bInfo) {
       badge.className = "legend-badge";
       badge.innerHTML = `
         <span class="legend-dot" style="background:${item.color}"></span>
-        <span>${item.label} <strong>${item.count}</strong></span>
+        <span>${escapeHtml(item.label)} <strong>${item.count}</strong></span>
       `;
       badge.addEventListener("mouseenter", () => {
         highlightedLabel = item.label === "Boşta" ? "__UNASSIGNED__" : item.label;
@@ -939,14 +939,7 @@ function renderGroupsSummary() {
   });
 
   if (filtered.length === 0) {
-    const emptyMsg = isSentTab
-      ? "Henüz WhatsApp üzerinden bilet gönderilmiş talep bulunmuyor."
-      : "Bekleyen talep bulunmuyor. Tüm talepler karşılandı ve gönderildi.";
-    listEl.innerHTML = `
-      <div style="padding:28px 16px; text-align:center; color:#64748b; font-size:12.5px;">
-        <i class="ph ${isSentTab ? "ph-paper-plane-tilt" : "ph-check-circle"}" style="font-size:28px; display:block; margin-bottom:8px; color:${isSentTab ? "#059669" : "#7c3aed"}; opacity:0.85;"></i>
-        <span>${emptyMsg}</span>
-      </div>`;
+    container.innerHTML = `<div style="padding:24px; color:#475569;">${query ? "Aramanıza uygun dağılım bulunamadı." : "Henüz koltuk ataması bulunmuyor."}</div>`;
     return;
   }
 
@@ -964,7 +957,7 @@ function renderGroupsSummary() {
     const hasRealSubgroups = g.subgroups.some((s) => s.subgroup !== "");
     const subPillsHtml = hasRealSubgroups
       ? `<div class="group-subtags-row">${g.subgroups
-          .map((s) => `<span class="mini-subgroup-badge">${s.subgroup || g.display_name}: ${s.count}</span>`)
+          .map((s) => `<span class="mini-subgroup-badge">${escapeHtml(s.subgroup || g.display_name)}: ${s.count}</span>`)
           .join("")}</div>`
       : "";
 
@@ -972,7 +965,7 @@ function renderGroupsSummary() {
       <div class="group-row-top">
         <div class="group-identity">
           <span class="group-circle-color" style="background:${g.color}"></span>
-          <span class="group-name-label">${g.display_name}</span>
+          <span class="group-name-label">${escapeHtml(g.display_name)}</span>
         </div>
         <div class="group-meta-right">
           <span class="group-ticket-pill">${g.total_count}</span>
@@ -1081,7 +1074,7 @@ function renderGroupsSummary() {
 
       const cardHead = document.createElement("div");
       cardHead.className = "subgroup-card-head";
-      cardHead.innerHTML = `<span class="subgroup-title">${sg.display} (${sg.count})</span>`;
+      cardHead.innerHTML = `<span class="subgroup-title">${escapeHtml(sg.display)} (${sg.count})</span>`;
 
       const inActions = document.createElement("div");
       inActions.className = "subgroup-actions-inline";
@@ -2206,8 +2199,8 @@ function renderHistoryModal() {
       (h) => `
     <div style="border:1px solid #e2e8f0; border-radius:6px; padding:10px; margin-bottom:6px; background:#f8fafc;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-        <strong>${h.match_name} ${h.match_date ? `(${h.match_date})` : ""}</strong>
-        <span style="font-size:11px; color:#64748b;">${h.saved_at}</span>
+        <strong>${escapeHtml(h.match_name)} ${h.match_date ? `(${escapeHtml(h.match_date)})` : ""}</strong>
+        <span style="font-size:11px; color:#64748b;">${escapeHtml(String(h.saved_at || ""))}</span>
       </div>
       <div style="font-size:11.5px; color:#475569; margin-bottom:6px;">
         Toplam: ${h.total_tickets} · Dağıtılan: ${h.assigned_tickets} · Diğer: ${h.diger_tickets}
@@ -2216,7 +2209,7 @@ function renderHistoryModal() {
         ${(h.groups || [])
           .map(
             (g) =>
-              `<span style="background:#fff; border:1px solid #cbd5e1; border-radius:3px; padding:1px 6px; font-size:11px;">${g.group}: <strong>${g.total}</strong></span>`
+              `<span style="background:#fff; border:1px solid #cbd5e1; border-radius:3px; padding:1px 6px; font-size:11px;">${escapeHtml(g.group)}: <strong>${Number(g.total) || 0}</strong></span>`
           )
           .join("")}
       </div>
@@ -2639,8 +2632,8 @@ function renderDispatchRecipients() {
         <div class="d-individual-tickets-list">
           ${(r.individual_tickets || []).map((t) => `
             <a
-              href="${t.download_url}"
-              download="${t.filename}"
+              href="${escapeHtml(t.download_url)}"
+              download="${escapeHtml(t.filename)}"
               class="d-seat-ticket-chip ${t.has_pdf ? 'ready' : 'virtual'}"
               title="${escapeHtml(t.label)} tekil PDF biletini indir"
             >

@@ -7,3 +7,7 @@ work/
 *.md
 *.py
 .env*
+
+.zeren-*.json
+mac_bilet_plani.json
+*.xlsx
