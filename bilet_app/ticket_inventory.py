@@ -42,3 +42,29 @@ def classify_ticket_directory(parts):
     subgroup = '/'.join(parts[1:])
     status = 'diger' if _normalize(group) == 'diger' else 'assigned'
     return group, subgroup, status
+
+
+def build_inventory(folder, paths, assignments):
+    """Publish filename/layout metadata, never PDF bytes or absolute disk paths."""
+    from pathlib import Path
+    from blocks_data import get_block_layout
+    root = Path(folder).resolve()
+    blocks = {}
+    coordinates = {}
+    for key, path in paths.items():
+        try:
+            relative = path.resolve().relative_to(root)
+            block, seat_id = key.split(':')
+            row, seat = map(int, seat_id.split('-'))
+        except ValueError:
+            continue
+        group, subgroup, status = classify_ticket_directory(relative.parent.parts)
+        ticket = {'key': key, 'block': block, 'seat_id': seat_id, 'row': row, 'seat': seat,
+                  'filename': path.name, 'rel_path': '', 'has_pdf': True}
+        if group and key not in assignments:
+            ticket['external_owner'] = {'group': group, 'subgroup': subgroup, 'status': status}
+        blocks.setdefault(block, {'tickets': {}})['tickets'][seat_id] = ticket
+        coordinates.setdefault(block, []).append((row, seat))
+    for block, data in blocks.items():
+        data['layout'] = get_block_layout(block, coordinates[block])
+    return blocks

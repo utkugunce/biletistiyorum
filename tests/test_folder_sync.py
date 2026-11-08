@@ -56,15 +56,15 @@ class FolderSyncTests(unittest.TestCase):
         fake_server.normalize_text = lambda text: text.casefold()
 
         def response(state):
-            return io.BytesIO(json.dumps([{'assigned_seats': state}]).encode())
+            return [{'assigned_seats': {'match_id': 'fixture', **state}}]
 
-        with patch.dict(sys.modules, {'server': fake_server}):
-            with patch.object(sync_helper.urllib.request, 'urlopen',
-                              return_value=response({'explorer_cmd': {}})):
+        with patch.dict(sys.modules, {'server': fake_server}), patch.object(sync_helper, 'match_id_for', return_value='fixture'):
+            with patch.object(sync_helper, 'call', return_value=response({})):
                 sync_helper.sync_cloud_assignments_to_folders(self.root)
             self.assertTrue(path.exists(), 'Missing cloud assignments must not mean unassign all')
-            with patch.object(sync_helper.urllib.request, 'urlopen',
-                              return_value=response({'virtual_assignments': {}})):
+            def cloud(endpoint, *args, **kwargs):
+                return response({'virtual_assignments': {}}) if endpoint.endswith('/state') else {'ok': True}
+            with patch.object(sync_helper, 'call', side_effect=cloud):
                 sync_helper.sync_cloud_assignments_to_folders(self.root)
         self.assertFalse(path.exists())
         self.assertTrue((self.root / FILENAME).exists())

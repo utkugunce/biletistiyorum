@@ -14,7 +14,15 @@ function initApp() {
   setupForm();
   loadInitialData();
   setupMyRequestsTracking();
+  document.getElementById("inputPersonName")?.addEventListener("change", event => {
+    const previous = localStorage.getItem("zeren_portal_last_user");
+    const phone = document.getElementById("inputPhoneNumber");
+    if (previous && event.target.value.trim() !== previous && !phone?.dataset.userEdited) phone.value = "";
+  });
   setupPWA();
+  const access = new URLSearchParams(location.hash.slice(1)).get("talep");
+  if (access) { switchTab("tab-my-requests"); document.getElementById("inputTrackQuery").value = access; searchMyRequests(access); }
+
 }
 
 if (document.readyState === "loading") {
@@ -116,6 +124,19 @@ async function loadInitialData() {
 // ---------------------------------------------------------
 // 3. MAÇ SEÇİMİ (DROPDOWN MENÜ)
 // ---------------------------------------------------------
+function renderPreferredBlocks(match) {
+  if (!Array.isArray(match?.blocks)) return;
+  const select = document.getElementById("selectTargetBlock");
+  const previous = select.value;
+  select.replaceChildren();
+  for (const id of match.blocks) {
+    const option = new Option(id === "SAHA" ? "Saha İçi" : `${id} Blok`, id);
+    select.add(option);
+  }
+  select.add(new Option("Fark etmez (Müsaitliğe göre)", ""));
+  select.value = match.blocks.includes(previous) ? previous : "";
+}
+
 function renderMatchDropdown(matches) {
   const selectEl = document.getElementById("selectMatchDropdown");
   const hiddenInput = document.getElementById("selectedMatchName");
@@ -142,6 +163,8 @@ function renderMatchDropdown(matches) {
     if (idx === 0) {
       opt.selected = true;
       selectedMatch = m;
+      renderPreferredBlocks(m);
+      selectEl.title = m.title;
       if (hiddenInput) hiddenInput.value = m.title;
       if (dateText && m.date) dateText.textContent = m.date;
     }
@@ -154,6 +177,8 @@ function renderMatchDropdown(matches) {
     const found = matches.find((m) => m.title === val);
     if (found) {
       selectedMatch = found;
+      selectEl.title = found.title;
+      renderPreferredBlocks(found);
       if (dateText && found.date) {
         dateText.textContent = found.date;
       }
@@ -251,6 +276,10 @@ function renderStaffAccordion(staffData) {
     groups = staffData.groups;
   }
   currentStaffGroups = groups;
+  const suggestions = document.getElementById("staffSuggestions");
+  if (suggestions) suggestions.replaceChildren(...groups.flatMap(g => g.members).map(name => {
+    const option = document.createElement("option"); option.value = name; return option;
+  }));
 
   container.innerHTML = "";
 
@@ -573,17 +602,11 @@ function setupForm() {
 
   const phoneInput = document.getElementById("inputPhoneNumber");
   if (phoneInput) {
-    phoneInput.addEventListener("input", (e) => {
-      let val = e.target.value.replace(/\D/g, "");
-      if (val.startsWith("90")) val = val.slice(2);
-      if (val.length > 0 && !val.startsWith("0")) val = "0" + val;
-      val = val.slice(0, 11);
-      let out = "";
-      if (val.length > 0) out = val.slice(0, 4);
-      if (val.length > 4) out += " " + val.slice(4, 7);
-      if (val.length > 7) out += " " + val.slice(7, 9);
-      if (val.length > 9) out += " " + val.slice(9, 11);
-      e.target.value = out;
+    phoneInput.required = true;
+    phoneInput.addEventListener("input", () => { phoneInput.dataset.userEdited = "true"; phoneInput.setCustomValidity(""); });
+    phoneInput.addEventListener("blur", () => {
+      const digits = phoneInput.value.replace(/\D/g, "");
+      phoneInput.setCustomValidity(digits.length >= 10 && digits.length <= 15 ? "" : "Geçerli WhatsApp numarası giriniz.");
     });
   }
 
@@ -617,6 +640,13 @@ function setupForm() {
       description: description,
     };
 
+    if (!form.reportValidity()) return;
+    const encoded = new TextEncoder().encode(JSON.stringify(payload));
+    const digest = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", encoded)), b => b.toString(16).padStart(2, "0")).join("");
+    let operation;
+    try { operation = JSON.parse(sessionStorage.getItem("zeren_pending_request") || "null"); } catch {}
+    if (!operation || operation.digest !== digest) operation = { digest, key: crypto.randomUUID() + crypto.randomUUID() };
+    sessionStorage.setItem("zeren_pending_request", JSON.stringify(operation));
     const submitBtn = document.getElementById("btnSubmitRequest");
     submitBtn.disabled = true;
     submitBtn.innerHTML = `<i class="ph ph-spinner spin"></i> <span>Talebiniz İletiliyor...</span>`;
@@ -624,7 +654,7 @@ function setupForm() {
     try {
       const res = await fetch("/api/portal/request", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": operation.key },
         body: JSON.stringify(payload),
       });
 
@@ -634,6 +664,8 @@ function setupForm() {
       }
 
       const created = await res.json();
+      sessionStorage.removeItem("zeren_pending_request");
+      if (created.tracking_token) localStorage.setItem("zeren_tracking_" + created.id, created.tracking_token);
 
       // İsmi ve telefonu yerel hafızaya kaydet
       localStorage.setItem("zeren_portal_last_user", person);
@@ -657,6 +689,9 @@ let lastCreatedRequest = null;
 
 function showSuccessModal(req) {
   lastCreatedRequest = req;
+  const trackingLink = location.origin + "/#talep=" + encodeURIComponent(req.tracking_token);
+  const trackingField = document.getElementById("receiptTrackingLink");
+  if (trackingField) trackingField.value = trackingLink;
   const rCode = document.getElementById("receiptCode");
   const rMatch = document.getElementById("receiptMatch");
   const rPerson = document.getElementById("receiptPerson");
@@ -674,10 +709,10 @@ function showSuccessModal(req) {
   const btnCopy = document.getElementById("btnCopyReceiptCode");
   if (btnCopy) {
     btnCopy.onclick = () => {
-      navigator.clipboard.writeText(req.id).then(() => {
-        showPortalToast(`📋 Takip kodu (${req.id}) panoya kopyalandı.`);
+      navigator.clipboard.writeText(trackingLink).then(() => {
+        showPortalToast(`📋 Güvenli takip bağlantısı panoya kopyalandı.`);
       }).catch(() => {
-        showPortalToast(`Takip kodu: ${req.id}`);
+        trackingField?.focus(); trackingField?.select(); showPortalToast("Bağlantı seçildi; cihazınızın kopyalama komutunu kullanınız.");
       });
     };
   }
@@ -691,8 +726,9 @@ function showSuccessModal(req) {
       switchTab("tab-my-requests");
       const trackInput = document.getElementById("inputTrackQuery");
       if (trackInput) {
-        trackInput.value = req.id;
-        searchMyRequests(req.id);
+        trackInput.value = req.tracking_token;
+        trackInput.focus();
+        searchMyRequests(req.tracking_token);
       }
     };
   }
@@ -850,7 +886,7 @@ function setupMyRequestsTracking() {
     btnSearch.addEventListener("click", () => {
       const q = inputQuery.value.trim();
       if (!q || q.length < 4) {
-        showPortalToast("Lütfen en az 4 karakterli takip kodu (ZS-XXXX) veya telefon numarası giriniz.");
+        showPortalToast("Talebinizin güvenli takip bağlantısını giriniz.");
         return;
       }
       searchMyRequests(q);
@@ -877,9 +913,13 @@ async function searchMyRequests(query) {
   `;
 
   try {
-    const res = await fetch(`/api/portal/my-requests?q=${encodeURIComponent(query)}`);
+    let access = String(query).trim();
+    if (access.startsWith("http")) access = new URLSearchParams(new URL(access).hash.slice(1)).get("talep") || "";
+    if (!access.includes(".")) access = localStorage.getItem("zeren_tracking_" + access) || "";
+    if (!access) throw new Error("Güvenli takip bağlantısı gerekli. Eski talebiniz için kulüp yönetiminden bağlantı isteyiniz.");
+    const res = await fetch("/api/portal/my-requests", { headers: { "X-Tracking-Token": access } });
     if (!res.ok) {
-      throw new Error("Sorgu gerçekleştirilemedi");
+      const error = await res.json(); throw new Error(error.detail || "Sorgu gerçekleştirilemedi");
     }
     const data = await res.json();
     if (!Array.isArray(data) || data.length === 0) {

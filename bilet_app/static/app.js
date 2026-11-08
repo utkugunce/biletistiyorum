@@ -4,24 +4,33 @@ let isLocalServiceOnline = false;
 async function checkLocalCompanionStatus() {
   const badge = document.getElementById("localServiceStatusBadge");
   try {
-    const res = await fetch("http://127.0.0.1:8765/api/status", { cache: "no-store", signal: AbortSignal.timeout(2000) });
-    if (res.ok) {
-      isLocalServiceOnline = true;
-      if (badge) {
-        badge.className = "local-status-pill online";
-        badge.innerHTML = `<span class="status-dot"></span><span>Yerel Servis: Bağlı</span>`;
-        badge.title = "FastAPI yerel masaüstü servisi çalışıyor (port 8765). Klasörler doğrudan açılabilir.";
-      }
-      return;
+    const response = await fetch("/api/status", { cache: "no-store", signal: AbortSignal.timeout(3000) });
+    if (!response.ok) return;
+    const status = await response.json();
+    const local = status.service === "zeren-local-daemon";
+    const companion = status.companion;
+    isLocalServiceOnline = local || Boolean(companion && Date.now() - companion.last_seen < 30000 && companion.status === "online");
+    if (badge) {
+      badge.className = "local-status-pill " + (isLocalServiceOnline ? "online" : "offline");
+      badge.textContent = isLocalServiceOnline ? "Yerel Servis: Bağlı" : companion?.status === "error" ? "Dosya işlemi bekliyor" : "Yerel Servis: Çevrimdışı";
+      badge.title = companion?.error || "Windows servisinin son bağlantı bilgisi";
     }
-  } catch (e) {}
+  } catch { isLocalServiceOnline = false; if (badge) badge.textContent = "Servis durumu alınamadı"; }
+}
 
-  isLocalServiceOnline = false;
-  if (badge) {
-    badge.className = "local-status-pill offline";
-    badge.innerHTML = `<span class="status-dot"></span><span>Yerel Servis: Çevrimdışı</span>`;
-    badge.title = "FastAPI yerel servisi çevrimdışı. Klasör açma komutları bulut üzerinden kuyruklanır.";
+async function watchExplorerCommand(commandId) {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      const response = await fetch("/api/status");
+      if (!response.ok) return;
+      const status = await response.json();
+      const command = status.commands?.find(c => c.id === commandId);
+      if (command?.status === "done") { showToast("Windows klasör açma komutu işlendi. Gönderimden sonra talebi işaretleyiniz."); return; }
+      if (command?.status === "error") { showToast("Klasör açılamadı: " + command.error); return; }
+    } catch { return; }
   }
+  showToast("Klasör isteği bekliyor. Yerel Windows servisinin bağlantısını kontrol ediniz.");
 }
 
 // U11: Aktif vurgulanan grup çipi
@@ -77,27 +86,18 @@ let excelSearchQuery = "";
 let isAdminAuthenticated = false;
 let liveSyncTimer = null;
 
-// Global fetch sarmalayıcısı: localStorage'da kayıtlı admin token varsa otomatik header'a ekler
-// Böylece sayfa yenilense de cookie temizlense de oturum asla düşmez
+// Same-origin HttpOnly sessions; explicitly scope every operation to its displayed match.
 const originalFetch = window.fetch;
 window.fetch = function(url, options = {}) {
-  const token = localStorage.getItem("zeren_admin_token");
-  if (token && typeof url === "string" && (url.startsWith("/api/") || url.startsWith("api/"))) {
-    options = options || {};
-    options.headers = options.headers || {};
-    if (options.headers instanceof Headers) {
-      if (!options.headers.has("X-Admin-Token")) options.headers.set("X-Admin-Token", token);
-      if (!options.headers.has("Authorization")) options.headers.set("Authorization", "Bearer " + token);
-    } else if (Array.isArray(options.headers)) {
-      options.headers.push(["X-Admin-Token", token]);
-      options.headers.push(["Authorization", "Bearer " + token]);
-    } else {
-      if (!options.headers["X-Admin-Token"]) options.headers["X-Admin-Token"] = token;
-      if (!options.headers["Authorization"]) options.headers["Authorization"] = "Bearer " + token;
-    }
+  if (typeof url === "string" && url.startsWith("/api/")) {
+    const headers = new Headers(options.headers || {});
+    const matchId = appState?.match_info?.match_id;
+    if (matchId) headers.set("X-Match-Id", matchId);
+    options = { ...options, headers, credentials: "same-origin" };
   }
   return originalFetch.call(this, url, options);
 };
+localStorage.removeItem("zeren_admin_token");
 
 document.addEventListener("DOMContentLoaded", () => {
   bindUIEvents();
@@ -133,17 +133,9 @@ function initLiveSync() {
 }
 
 async function checkAuthAndInit() {
-  const savedToken = localStorage.getItem("zeren_admin_token");
-  if (savedToken) {
-    // Kayıtlı token varsa başlangıçta form gösterilmez, arka planda doğrulanır
-    hideLoginOverlay();
-  } else {
-    showLoginOverlay();
-  }
-
+  showLoginOverlay();
   try {
-    const headers = savedToken ? { "X-Admin-Token": savedToken, "Authorization": "Bearer " + savedToken } : {};
-    const res = await fetch("/api/auth/check", { headers });
+    const res = await fetch("/api/auth/check");
     const text = await res.text();
     let data = {};
     try {
@@ -258,6 +250,7 @@ function renderTopBar() {
     const cleanT = (m.title || "Maç").replace(/\s*-\s*\d{3}\s+\d+\s*-\s*-?\d+$/, "");
     const dPart = m.date ? ` (${m.date})` : "";
     opt.textContent = `${cleanT}${dPart}`;
+    if (m.folder === appState.folder) matchSelect.title = opt.textContent;
     if (m.folder.toLowerCase() === appState.folder.toLowerCase()) {
       opt.selected = true;
     }
@@ -273,7 +266,7 @@ function renderTopBar() {
   }
 
   const statTot = document.getElementById("statTotalPdf");
-  if (statTot) statTot.textContent = appState.total_tickets;
+  if (statTot) statTot.textContent = Object.values(appState.blocks || {}).reduce((total, block) => total + (block.total_pdfs || 0), 0);
   const statAss = document.getElementById("statAssignedPdf");
   if (statAss) statAss.textContent = appState.assigned_tickets;
   const statAvail = document.getElementById("statAvailablePdf");
@@ -298,7 +291,7 @@ function renderQuickBlockDropdown() {
     const activeCnt = b.total_active || b.total_pdfs || 0;
     opt.textContent =
       activeCnt > 0
-        ? `${b.id} Blok (${b.assigned_count}/${activeCnt} Dolu)`
+        ? `${b.id} Blok (${b.assigned_count}/${activeCnt} Atanmış)`
         : `${b.id} Blok (${b.capacity} Koltuk)`;
     if (b.id === currentBlockId) opt.selected = true;
     sel.appendChild(opt);
@@ -510,11 +503,11 @@ function renderSeatingStage() {
 
         if (colorMode === "classic") {
           bgColor = isAssigned ? "#DC2626" : (isDiger ? "#D97706" : "#FFFFFF");
-          ownerShort = isAssigned ? ticket.subgroup || ticket.group : isDiger ? "diğer" : "Boşta";
+          ownerShort = isAssigned ? ticket.group || ticket.subgroup : isDiger ? "diğer" : "Boşta";
         } else {
           if (isAssigned) {
             bgColor = ticket.color || "#7E22CE";
-            ownerShort = ticket.subgroup || ticket.group;
+            ownerShort = ticket.group || ticket.subgroup;
           } else {
             bgColor = isDiger ? "#D97706" : "#FFFFFF";
             ownerShort = isDiger ? "diğer" : "Boşta";
@@ -530,7 +523,11 @@ function renderSeatingStage() {
           cell.style.color = "#334155";
           cell.style.border = "1.5px solid #CBD5E1";
         } else {
-          cell.style.color = "#FFFFFF";
+          const hex = bgColor.replace("#", "");
+          const rgb = hex.length === 6 ? [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16) / 255) : [0, 0, 0];
+          const linear = rgb.map(v => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+          const luminance = 0.2126 * linear[0] + 0.7152 * linear[1] + 0.0722 * linear[2];
+          cell.style.color = 1.05 / (luminance + 0.05) >= 4.5 ? "#FFFFFF" : "#111827";
           cell.style.border = "1.5px solid transparent";
         }
 
@@ -559,13 +556,25 @@ function renderSeatingStage() {
         }
 
         const pdfNote = ticket.has_pdf === false ? " (Planlandı)" : "";
-        cell.title = `${bInfo.id} Blok · Sıra ${rNum} Koltuk ${seatNum}\nKişi/Grup: ${ticket.label || "Ana Klasör"}${pdfNote}`;
+        cell.title = `${bInfo.id} Blok · Sıra ${rNum} Koltuk ${seatNum}\nKişi/Grup: ${ticket.label || "Ana Klasör"}${pdfNote} · Talep: ${ticket.request_id || "Plan"}`;
         cell.innerHTML = `
           <span class="seat-num">${seatNum}</span>
-          <span class="seat-owner" style="${ownerShort.length > 10 ? 'font-size:7.5px;letter-spacing:-0.03em;' : ''}">${escapeHtml(ownerShort)}</span>
+          <span class="seat-owner" style="">${escapeHtml(ownerShort)}</span>
         `;
       }
 
+      cell.tabIndex = 0;
+      cell.setAttribute("role", "button");
+      cell.setAttribute("aria-label", cell.title);
+      cell.setAttribute("aria-pressed", String(selectedSeats.has(seatId)));
+      cell.addEventListener("keydown", event => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSeatMouseDown({ button: 0, shiftKey: event.shiftKey, preventDefault() {} }, rNum, seatNum, seatId);
+          isMouseDown = false;
+          document.querySelector(`[data-seat-id="${seatId}"]`)?.focus();
+        }
+      });
       cell.addEventListener("mousedown", (e) => onSeatMouseDown(e, rNum, seatNum, seatId));
       cell.addEventListener("mouseenter", (e) => onSeatMouseEnter(e, rNum, seatNum, seatId));
 
@@ -1290,6 +1299,8 @@ function renderExcelPanel() {
       </div>
 
       <div class="excel-card-actions">
+        <button class="excel-action-btn" data-act="tracking" title="Yeni bağlantı önceki takip bağlantısını geçersizleştirir">Yeni takip bağlantısı</button>
+        ${isComp ? `<button class="excel-action-btn" data-act="mark-sent">${r.whatsapp_sent ? "Gönderim işaretini kaldır" : "Gönderildi olarak işaretle"}</button>` : ""}
         ${
           r.target_block && r.target_block !== currentBlockId && appState.blocks && appState.blocks[r.target_block]
             ? `<button class="excel-action-btn" data-act="jump" title="${r.target_block} bloğuna git">
@@ -1425,6 +1436,19 @@ function renderExcelPanel() {
       });
     }
 
+    card.querySelector('[data-act="tracking"]')?.addEventListener("click", async () => {
+      try {
+        const response = await fetch(`/api/portal/request/${encodeURIComponent(r.request_id)}/tracking-link`, { method: "POST" });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || "Bağlantı oluşturulamadı.");
+        await navigator.clipboard.writeText(location.origin + "/#talep=" + encodeURIComponent(data.token));
+        showToast("Güvenli takip bağlantısı kopyalandı. Bu bağlantıyı yalnız talep sahibiyle paylaşınız.");
+      } catch (error) { showToast(error.message); }
+    });
+    card.querySelector('[data-act="mark-sent"]')?.addEventListener("click", async () => {
+      try { await setRecipientSentStatus(r.request_id, r.person, !r.whatsapp_sent); await fetchExcelSummary(); }
+      catch { /* The shared action already displays the failure. */ }
+    });
     const btnCardWhatsapp = card.querySelector('[data-act="whatsapp"]');
     if (btnCardWhatsapp) {
       btnCardWhatsapp.addEventListener("click", (e) => {
@@ -1446,7 +1470,6 @@ async function handleExcelAssignClick(req) {
   if (selectedSeats.size > 0) {
     const chosenList = Array.from(selectedSeats);
     const assignBlock = currentBlockId || targetB;
-    selectedSeats.clear();
     try {
       const res = await fetch("/api/excel/assign-request", {
         method: "POST",
@@ -1467,6 +1490,8 @@ async function handleExcelAssignClick(req) {
       const data = await res.json();
       updateAppState(data);
       await fetchExcelSummary();
+      selectedSeats.clear();
+      updateSelectionBar();
       showToast(`✅ ${req.person} talebine ${chosenList.length} koltuk atandı.`);
     } catch (err) {
       showToast(`Hata: ${err.message}`);
@@ -2281,7 +2306,7 @@ async function handleAdminLogin() {
     }
     if (res.ok && (data.success || data.authenticated)) {
       if (data.token) {
-        localStorage.setItem("zeren_admin_token", data.token);
+        // Sessions are carried by an HttpOnly cookie.
       }
       isAdminAuthenticated = true;
       hideLoginOverlay();
@@ -2694,10 +2719,14 @@ function renderDispatchRecipients() {
     const btnToggle = card.querySelector('[data-action="toggle-sent"]');
     if (btnToggle) {
       btnToggle.addEventListener("click", async () => {
-        const nextSent = !r.whatsapp_sent;
-        await setRecipientSentStatus(r.id, r.person, nextSent);
-        r.whatsapp_sent = nextSent;
-        renderDispatchRecipients();
+        btnToggle.disabled = true;
+        try {
+          const nextSent = !r.whatsapp_sent;
+          await setRecipientSentStatus(r.id, r.person, nextSent);
+          r.whatsapp_sent = nextSent;
+          renderDispatchRecipients();
+        } catch { /* The action displays the error and preserves its old state. */ }
+        finally { btnToggle.disabled = false; }
       });
     }
 
@@ -2712,26 +2741,30 @@ async function saveRecipientPhone(reqId, person, phone) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ request_id: reqId, person: person, phone: phone }),
     });
+    if (!res.ok) { const error = await res.json(); throw new Error(error.detail || "Telefon kaydedilemedi."); }
     if (res.ok) {
       showToast(`📞 ${person} için telefon kaydedildi: ${phone}`);
-      const found = dispatchRecipients.find((x) => x.id === reqId || x.person === person);
+      const found = dispatchRecipients.find((x) => x.id === reqId);
       if (found) {
         found.phone = phone;
         found.clean_phone = phone.replace(/\D/g, "");
       }
+      return true;
     }
   } catch (err) {
     showToast("Telefon kaydedilemedi: " + err.message);
+    return false;
   }
 }
 
 async function setRecipientSentStatus(reqId, person, sent) {
   try {
-    await fetch("/api/dispatch/mark-sent", {
+    const response = await fetch("/api/dispatch/mark-sent", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ request_id: reqId, person: person, sent: sent }),
     });
+    if (!response.ok) { const error = await response.json(); throw new Error(error.detail || "Gönderim durumu kaydedilemedi."); }
     if (excelData && Array.isArray(excelData.requests)) {
       excelData.requests.forEach((r) => {
         // T07: Kesin request_id eşleşmesi (aynı kişinin diğer taleplerini etkileme)
@@ -2743,7 +2776,8 @@ async function setRecipientSentStatus(reqId, person, sent) {
     }
     updateDispatchBadge();
   } catch (err) {
-    console.error("Durum kaydedilemedi:", err);
+    showToast("Durum kaydedilemedi: " + err.message);
+    throw err;
   }
 }
 
@@ -2761,7 +2795,7 @@ async function handleDispatchSendWhatsApp(r, cardEl) {
       currentVal
     );
     if (!promptVal) return;
-    await saveRecipientPhone(r.id, r.person, promptVal);
+    if (!await saveRecipientPhone(r.id, r.person, promptVal)) return;
     targetPhone = promptVal.replace(/\D/g, "");
     if (targetPhone.startsWith("0") && targetPhone.length === 11) targetPhone = "90" + targetPhone.slice(1);
     else if (targetPhone.startsWith("5") && targetPhone.length === 10) targetPhone = "90" + targetPhone;
@@ -2785,7 +2819,7 @@ async function handleDispatchSendWhatsApp(r, cardEl) {
       if (files.length > 0 && navigator.canShare({ files })) {
         await navigator.share({ files: files });
         renderDispatchRecipients();
-  showToast(`📱 ${r.person} için WhatsApp ve bilet klasörü açıldı. Biletleri ilettikten sonra "Gönderildi" butonuna basınız.`);
+  showToast("Paylaşım ekranı kapandı. Biletleri ilettiyseniz Gönderildi olarak işaretleyiniz.");
         return;
       }
     } catch (err) {
@@ -2796,20 +2830,12 @@ async function handleDispatchSendWhatsApp(r, cardEl) {
   // 3. Masaüstü Akışı: Tekli bilet indirme YOK. Sadece kişinin Windows klasörü açılır, WhatsApp uygulaması açılır.
   const dlCount = (r.individual_tickets || []).length || r.seat_count || 0;
 
-  // 1. Windows Klasörünü Oluştur ve Aç (hem doğrudan yerel port hem bulut köprüsü üzerinden tetiklenir)
-  try {
-    const personName = r.person || "";
-    const reqId = r.request_id || r.id || "";
-    const qs = `group=${encodeURIComponent(personName)}&request_id=${encodeURIComponent(reqId)}`;
-    fetch(`/api/open-explorer?${qs}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ group: personName, request_id: reqId })
-    }).catch(() => {});
-    fetch(`http://127.0.0.1:8765/api/open-explorer?${qs}`, { mode: "no-cors" }).catch(() => {});
-  } catch (err) {
-    console.log("Explorer açma isteği:", err);
-  }
+  const reqId = r.request_id || r.id;
+  const qs = `group=${encodeURIComponent(r.person || "")}&request_id=${encodeURIComponent(reqId)}`;
+  const explorerRequest = fetch(`/api/open-explorer?${qs}`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ group: r.person || "", request_id: reqId }),
+  });
 
   // 2. WhatsApp Windows Masaüstü Uygulamasını Doğrudan Aç (whatsapp:// protokolü)
   if (targetPhone) {
@@ -2828,7 +2854,14 @@ async function handleDispatchSendWhatsApp(r, cardEl) {
   }
 
   renderDispatchRecipients();
-  showToast(`📱 ${r.person} için WhatsApp ve bilet klasörü açıldı. Biletleri ilettikten sonra "Gönderildi" butonuna basınız.`);
+  try {
+    const response = await explorerRequest;
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.detail || "Klasör isteği kaydedilemedi.");
+    showToast("WhatsApp açma isteği iletildi. Klasör işlemi hazırlanıyor; gönderimden sonra talebi işaretleyiniz.");
+    if (result.command_id) watchExplorerCommand(result.command_id);
+    else if (result.opened) showToast("Windows klasör açma komutu işlendi. Gönderimden sonra talebi işaretleyiniz.");
+  } catch (error) { showToast(error.message); }
 }
 
 function handleQuickSendWhatsAppForRequest(req) {
@@ -2848,7 +2881,7 @@ function handleQuickSendWhatsAppForRequest(req) {
       seat_id: sid,
       label: `${bId.toUpperCase() === "SAHA" ? "Saha İçi" : bId + " Blok"} · S.${rLabel} K.${s}`,
       filename: `ZEREN_SPOR_${bId.toUpperCase() === "SAHA" ? "SahaIci" : bId + "Blok"}_Sira${rLabel}_Koltuk${s}.pdf`,
-      download_url: `/tickets/${encodeURIComponent((window.TICKET_FILES && window.TICKET_FILES[k]) || `${bId}_${sid}.pdf`)}`,
+      download_url: `/api/tickets/download-single?block=${encodeURIComponent(bId)}&seat=${encodeURIComponent(sid)}`,
       has_pdf: true
     };
   });
@@ -2953,7 +2986,7 @@ async function handleEditRequestSubmit() {
 }
 
 function setupHorizontalScroll() {
-  ["topbar", "block-toolbar"].forEach((cls) => {
+  [].forEach((cls) => {
     const el = document.querySelector("." + cls);
     if (!el) return;
     el.addEventListener("wheel", (e) => {

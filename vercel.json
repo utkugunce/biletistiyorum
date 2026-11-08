@@ -11,6 +11,10 @@
       "destination": "/api/admin"
     },
     {
+      "source": "/tickets/:path*",
+      "destination": "/api/admin"
+    },
+    {
       "source": "/api/portal/matches",
       "destination": "/api/matches"
     },

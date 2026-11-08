@@ -5,6 +5,7 @@ Sezonluk Çoklu Maç Bilet Dağıtım ve Takip Uygulaması - FastAPI Backend
 """
 
 import io
+import hashlib
 import json
 import os
 import re
@@ -24,6 +25,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, Reque
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from blocks_data import ARENA_ZONES, BLOCKS_DB, CLOSED_BLOCKS, get_block_layout
@@ -168,8 +170,8 @@ class StateManager:
                     data["saved_groups"] = [
                         g for g in saved if g.get("group", "").lower() not in ("fenerbahçe", "rakip kulüp")
                     ]
-                    if "admin_password" not in data:
-                        data["admin_password"] = os.environ.get("ZEREN_ADMIN_PASSWORD", "zeren2026")
+                    if "admin_password" not in data and "admin_password_hash" not in data:
+                        data["admin_password"] = os.environ.get("ZEREN_ADMIN_PASSWORD", "")
                     if "admin_tokens" not in data:
                         data["admin_tokens"] = []
                     return data
@@ -177,7 +179,7 @@ class StateManager:
                 pass
         default_data = {
             "last_folder": str(DEFAULT_MATCH_DIR),
-            "admin_password": os.environ.get("ZEREN_ADMIN_PASSWORD", "zeren2026"),
+            "admin_password": os.environ.get("ZEREN_ADMIN_PASSWORD", ""),
             "admin_tokens": [],
             "matches": [],
             "group_colors": {
@@ -219,39 +221,43 @@ class StateManager:
             json.dump(self.storage, f, ensure_ascii=False, indent=2)
 
     def check_admin_password(self, pwd: str) -> bool:
-        expected = str(self.storage.get("admin_password") or os.environ.get("ZEREN_ADMIN_PASSWORD") or "zeren2026")
-        return pwd == expected
+        stored = self.storage.get("admin_password_hash")
+        if stored:
+            salt, expected = stored.split(":", 1)
+            actual = hashlib.scrypt(pwd.encode(), salt=bytes.fromhex(salt), n=16384, r=8, p=1).hex()
+            return secrets.compare_digest(actual, expected)
+        expected = str(self.storage.get("admin_password") or os.environ.get("ZEREN_ADMIN_PASSWORD") or "")
+        valid = bool(expected) and secrets.compare_digest(pwd.encode(), expected.encode())
+        if valid:
+            self.set_admin_password(pwd)
+        return valid
 
     def set_admin_password(self, new_pwd: str):
-        self.storage["admin_password"] = new_pwd
+        salt = secrets.token_bytes(16)
+        value = hashlib.scrypt(new_pwd.encode(), salt=salt, n=16384, r=8, p=1).hex()
+        self.storage["admin_password_hash"] = salt.hex() + ":" + value
+        self.storage.pop("admin_password", None)
+        self.storage["admin_tokens"] = {}
         self._save_storage()
 
     def create_admin_session(self) -> str:
-        token = secrets.token_hex(24)
-        tokens = self.storage.get("admin_tokens", [])
-        if not isinstance(tokens, list):
-            tokens = []
-        tokens.append(token)
-        # en fazla son 50 oturumu tut
-        self.storage["admin_tokens"] = tokens[-50:]
+        token = secrets.token_hex(32)
+        old = self.storage.get("admin_tokens", {})
+        sessions = {k: v for k, v in old.items() if v > time.time()} if isinstance(old, dict) else {}
+        sessions[hashlib.sha256(token.encode()).hexdigest()] = time.time() + 7 * 86400
+        self.storage["admin_tokens"] = sessions
         self._save_storage()
         return token
 
     def verify_admin_token(self, token: Optional[str]) -> bool:
-        if not token:
-            return False
-        tokens = self.storage.get("admin_tokens", [])
-        if not isinstance(tokens, list):
-            return False
-        return token in tokens
+        sessions = self.storage.get("admin_tokens", {})
+        return bool(token and isinstance(sessions, dict) and
+                    sessions.get(hashlib.sha256(token.encode()).hexdigest(), 0) > time.time())
 
     def revoke_admin_token(self, token: Optional[str]):
-        if not token:
-            return
-        tokens = self.storage.get("admin_tokens", [])
-        if isinstance(tokens, list) and token in tokens:
-            tokens.remove(token)
-            self.storage["admin_tokens"] = tokens
+        sessions = self.storage.get("admin_tokens", {})
+        if token and isinstance(sessions, dict):
+            sessions.pop(hashlib.sha256(token.encode()).hexdigest(), None)
             self._save_storage()
 
     def _ensure_match_registered(self, folder: Path, custom_title: str = "", custom_date: str = ""):
@@ -716,7 +722,7 @@ app = FastAPI(title="Başkent Voleybol Salonu Bilet Dağıtım ve Takip Uygulama
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=os.environ.get("ZEREN_ALLOWED_ORIGINS", "https://biletistiyorum.vercel.app,http://127.0.0.1:8765,http://localhost:8765").split(","),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -725,6 +731,10 @@ app.add_middleware(
 @app.middleware("http")
 async def admin_auth_middleware(request: Request, call_next):
     path = request.url.path
+    if request.method not in ("GET", "HEAD", "OPTIONS"):
+        origin = request.headers.get("origin")
+        if origin and origin.rstrip("/") != str(request.base_url).rstrip("/"):
+            return JSONResponse(status_code=403, content={"detail": "Geçersiz istek kaynağı."})
 
     # Public paths (no password needed):
     # - Root index file ("/" and "/index.html"): The page loads, but frontend shows login overlay and cannot fetch /api/state
@@ -734,16 +744,15 @@ async def admin_auth_middleware(request: Request, call_next):
     # - Admin auth APIs: /api/auth/login, /api/auth/check
     # - CORS OPTIONS requests
     if (
-        path in ("/", "/index.html", "/favicon.ico", "/manifest.json", "/sw.js", "/api/status")
+        path in ("/", "/index.html", "/favicon.ico", "/manifest.json", "/sw.js")
         or path.startswith("/static")
         or path.startswith("/assets")
         or path.startswith("/icons")
         or path.startswith("/bilet-istiyorum")
         or path.startswith("/talep")
-        or path.startswith("/api/portal")
+        or path in ("/api/portal/matches", "/api/portal/staff", "/api/portal/request", "/api/portal/my-requests")
         or path.startswith("/api/auth/login")
         or path.startswith("/api/auth/check")
-        or path == "/api/open-explorer"
         or request.method == "OPTIONS"
     ):
         return await call_next(request)
@@ -764,6 +773,37 @@ async def admin_auth_middleware(request: Request, call_next):
                 content={"detail": "Yetkisiz erişim. Lütfen yönetici şifresi ile giriş yapınız."},
             )
 
+    cloud_paths = {
+        "/api/state", "/api/excel/summary", "/api/excel/reload", "/api/assign", "/api/shift",
+        "/api/groups/unassign", "/api/excel/assign-request", "/api/matches/auto-assign-all",
+        "/api/dispatch/list", "/api/dispatch/mark-sent", "/api/dispatch/save-phone",
+    }
+    cloud_request = bool(re.fullmatch(r"/api/portal/request/[A-Za-z0-9_-]+/(delete|update|tracking-link)", path))
+    if os.environ.get("ZEREN_COMPANION_TOKEN") and (path in cloud_paths or cloud_request):
+        from cloud_bridge import call as cloud_call, match_id_for
+        try:
+            match_id = await run_in_threadpool(match_id_for, state_mgr.active_folder)
+            payload = await request.json() if request.method == "POST" else {}
+            result = await run_in_threadpool(cloud_call, "/api/companion/admin-action", "POST",
+                {"path": path, "method": request.method, "body": payload}, match_id)
+            if request.method == "POST":
+                from sync_helper import sync_cloud_assignments_to_folders
+                await run_in_threadpool(sync_cloud_assignments_to_folders, state_mgr.active_folder)
+            state_result = result.get("state", result) if isinstance(result, dict) else None
+            if isinstance(state_result, dict) and "blocks" in state_result:
+                state_result["folder"] = str(state_mgr.active_folder)
+                state_result["matches"] = state_mgr.storage.get("matches", [])
+            return JSONResponse(content=result)
+        except Exception as error:
+            import urllib.error
+            if isinstance(error, urllib.error.HTTPError):
+                try:
+                    detail = json.loads(error.read().decode())
+                except Exception:
+                    detail = {"detail": "Bulut işlemi tamamlanamadı."}
+                return JSONResponse(status_code=error.code, content=detail)
+            return JSONResponse(status_code=503, content={"detail": "Bulut bağlantısı kurulamadı; işlem yerelde uygulanmadı."})
+
     return await call_next(request)
 
 
@@ -777,20 +817,28 @@ class ChangePasswordPayload(BaseModel):
 
 
 @app.post("/api/auth/login")
-def api_auth_login(payload: LoginPayload, response: Response):
+def api_auth_login(payload: LoginPayload, response: Response, request: Request):
+    ip = hashlib.sha256((request.client.host if request.client else "local").encode()).hexdigest()
+    attempts = {key: value for key, value in state_mgr.storage.get("login_attempts", {}).items() if value["until"] > time.time()}
+    state_mgr.storage["login_attempts"] = attempts
+    if attempts.get(ip, {}).get("count", 0) >= 5:
+        raise HTTPException(status_code=429, detail="Bir dakika sonra tekrar deneyiniz.")
     pwd = payload.password.strip()
     if state_mgr.check_admin_password(pwd):
+        attempts.pop(ip, None)
         token = state_mgr.create_admin_session()
         response.set_cookie(
             key="zeren_admin_token",
             value=token,
-            max_age=30 * 24 * 3600,
-            httponly=False,
+            max_age=7 * 24 * 3600,
+            httponly=True,
             samesite="lax",
             path="/"
         )
-        return {"success": True, "token": token, "message": "Giriş başarılı."}
+        return {"success": True, "message": "Giriş başarılı."}
     else:
+        attempts[ip] = {"count": attempts.get(ip, {}).get("count", 0) + 1, "until": time.time() + 60}
+        state_mgr._save_storage()
         raise HTTPException(status_code=401, detail="Hatalı şifre! Lütfen tekrar deneyiniz.")
 
 
@@ -853,8 +901,8 @@ def api_auth_change_password(payload: ChangePasswordPayload, request: Request):
     if not state_mgr.check_admin_password(payload.current_password.strip()):
         raise HTTPException(status_code=400, detail="Mevcut şifreniz hatalı.")
     new_p = payload.new_password.strip()
-    if len(new_p) < 4:
-        raise HTTPException(status_code=400, detail="Yeni şifre en az 4 karakter olmalıdır.")
+    if len(new_p) < 12:
+        raise HTTPException(status_code=400, detail="Yeni şifre en az 12 karakter olmalıdır.")
     state_mgr.set_admin_password(new_p)
     return {"success": True, "message": "Şifre başarıyla güncellendi."}
 
@@ -895,6 +943,7 @@ class GroupTemplateRequest(BaseModel):
 class OpenExplorerRequest(BaseModel):
     group: str = ""
     subgroup: str = ""
+    request_id: str = ""
 
 
 class ExcelAssignPayload(BaseModel):
@@ -1444,7 +1493,7 @@ def api_dispatch_mark_sent(payload: DispatchMarkSentPayload):
     person = payload.person.strip()
     is_sent = payload.sent
 
-    if req_id and req_id.startswith("ZEREN-"):
+    if req_id and not req_id.startswith("group_"):
         set_request_whatsapp_sent(req_id, is_sent)
         return {"success": True, "request_id": req_id, "sent": is_sent}
 
@@ -1471,7 +1520,7 @@ def api_dispatch_save_phone(payload: DispatchSavePhonePayload):
     if person and phone:
         save_person_phone(person, phone)
 
-    if req_id and req_id.startswith("ZEREN-"):
+    if req_id and not req_id.startswith("group_"):
         update_request_phone(req_id, phone)
 
     clean_p = format_whatsapp_phone(phone)
@@ -1907,13 +1956,19 @@ def api_save_history():
     return {"ok": True, "history": state_mgr.storage["history"]}
 
 
-@app.api_route("/api/open-explorer", methods=["GET", "POST"])
+@app.post("/api/open-explorer")
 def api_open_explorer(group: str = "", subgroup: str = "", request_id: str = "", req: Optional[OpenExplorerRequest] = None):
-    import subprocess
+    from folder_sync import sanitize_filename_component
     from sync_helper import sync_cloud_assignments_to_folders
     grp = (req.group if req else "") or group
     sub = (req.subgroup if req else "") or subgroup
-    rid = request_id.strip()
+    rid = ((getattr(req, 'request_id', '') if req else '') or request_id).strip()
+    # Legacy map-only recipients explicitly represent a whole manual group.
+    if rid == "group_" + re.sub(r'[^a-zA-Z0-9]', '_', grp):
+        rid = ""
+    safe_grp = sanitize_filename_component(grp) if grp else ""
+    safe_sub = sanitize_filename_component(sub) if sub else ""
+    safe_rid = sanitize_filename_component(rid) if rid else ""
 
     # Cloud atamalarını yerel Windows klasörlerine senkronize et
     try:
@@ -1926,31 +1981,42 @@ def api_open_explorer(group: str = "", subgroup: str = "", request_id: str = "",
         # İsme göre klasör ara (büyük/küçük harf toleranslı)
         found_target = None
         for item in state_mgr.active_folder.iterdir():
-            if item.is_dir() and normalize_text(item.name) == normalize_text(grp):
+            if item.is_dir() and normalize_text(item.name) == normalize_text(safe_grp):
                 found_target = item
                 break
         if found_target:
             target = found_target
-            if rid and (target / rid).exists():
-                target = target / rid
-            elif sub and (target / sub).exists():
-                target = target / sub
+            if safe_rid:
+                target = target / safe_rid
+            elif safe_sub:
+                target = target / safe_sub
         else:
-            target = state_mgr.active_folder / grp
-            if rid:
-                target = target / rid
-            elif sub:
-                target = target / sub
+            target = state_mgr.active_folder / safe_grp
+            if safe_rid:
+                target = target / safe_rid
+            elif safe_sub:
+                target = target / safe_sub
 
+    if not target.resolve().is_relative_to(state_mgr.active_folder.resolve()):
+        raise HTTPException(status_code=400, detail="Geçersiz klasör.")
     if not target.exists():
-        target = state_mgr.active_folder
+        raise HTTPException(status_code=409, detail="Bilet klasörü henüz hazır değil.")
+
+    if rid and os.environ.get("ZEREN_COMPANION_TOKEN"):
+        from cloud_bridge import call as cloud_call, match_id_for
+        rows = cloud_call("/api/companion/requests", match_id=match_id_for(state_mgr.active_folder))
+        row = next((item for item in rows if item.get("id") == rid), None)
+        expected = row.get("matched_keys", []) if row else []
+        paths = _find_ticket_path_map(state_mgr.active_folder)
+        if not expected or any(key not in paths or paths[key].parent.resolve() != target.resolve() for key in expected):
+            raise HTTPException(status_code=409, detail="Bu talebin PDF dosyaları henüz hazır değil.")
 
     target_str = str(target.resolve())
     try:
         from desktop_helper import open_folder_on_user_desktop
         open_folder_on_user_desktop(target)
     except Exception as e:
-        print("Explorer open error:", e)
+        raise HTTPException(status_code=503, detail="Windows Gezgini açılamadı.") from e
     return {"ok": True, "opened": target_str}
 
 
@@ -2384,7 +2450,7 @@ def api_portal_staff():
 
 
 @app.post("/api/portal/request")
-def api_portal_submit_request(payload: PortalRequestPayload):
+def api_portal_submit_request(payload: PortalRequestPayload, request: Request):
     match_name = payload.match_name.strip()
     if not match_name:
         match_name = "Zeren Spor Kulübü - Kuzeyboru"
@@ -2395,30 +2461,24 @@ def api_portal_submit_request(payload: PortalRequestPayload):
 
     req_data = payload.dict()
     req_data["match_name"] = match_name
-    created = create_portal_request(req_data)
+    created = create_portal_request(req_data, idempotency_key=request.headers.get("idempotency-key"))
     return created
 
 
 @app.get("/api/portal/my-requests")
-def api_portal_my_requests(q: str = Query("")):
-    requests = get_requests_by_person(q)
-    for req in requests:
-        req["has_physical_pdf"] = False
-        if req.get("status") == "assigned" and req.get("assigned_seats"):
-            b_id = req.get("assigned_block", "121")
-            for m in state_mgr.storage.get("matches", []):
-                norm_m = normalize_text(m.get("title", ""))
-                if normalize_text(req.get("match_name", "")) in norm_m:
-                    mfolder = Path(m["folder"])
-                    if mfolder.exists():
-                        pmap = _find_ticket_path_map(mfolder)
-                        for sid in req.get("assigned_seats", []):
-                            key = f"{b_id}:{sid}"
-                            if key in pmap:
-                                req["has_physical_pdf"] = True
-                                break
-                    break
-    return requests
+def api_portal_my_requests(request: Request, q: str = Query("")):
+    import urllib.request
+    token = request.headers.get("x-tracking-token", "")
+    if not token:
+        raise HTTPException(status_code=401, detail="Güvenli takip bağlantısı gerekli.")
+    base = os.environ.get("ZEREN_CLOUD_URL", "https://biletistiyorum.vercel.app").rstrip("/")
+    req = urllib.request.Request(base + "/api/portal/my-requests", headers={"X-Tracking-Token": token})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as response:
+            return json.loads(response.read().decode())
+    except Exception:
+        raise HTTPException(status_code=403, detail="Talep güvenli biçimde doğrulanamadı.")
+
 
 
 @app.get("/api/portal/download-tickets/{request_id}")
@@ -2652,4 +2712,4 @@ if __name__ == "__main__":
     import threading
     import uvicorn
     threading.Thread(target=_auto_folder_sync_loop, daemon=True).start()
-    uvicorn.run(app, host="0.0.0.0", port=8765)
+    uvicorn.run(app, host=os.environ.get("ZEREN_BIND_HOST", "127.0.0.1"), port=8765)

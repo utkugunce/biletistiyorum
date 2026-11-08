@@ -120,7 +120,7 @@ def _owned_path(root, record):
     return None
 
 
-def reconcile_folder(folder, assignments, path_map):
+def reconcile_folder(folder, assignments, path_map, errors=None):
     """Apply cloud assignments and retry pending returns using a per-root journal.
 
     path_map maps seat keys to the current PDF paths from the existing parser.
@@ -128,6 +128,7 @@ def reconcile_folder(folder, assignments, path_map):
     recover automatically, since that would discard ownership information.
     """
     root = Path(folder).resolve()
+    errors = errors if errors is not None else []
     with _LOCK:
         journal = _load(root)
         managed = journal['managed']
@@ -180,6 +181,7 @@ def reconcile_folder(folder, assignments, path_map):
                 path_map[key] = destination
             except (OSError, ValueError) as error:
                 print(f'[Sync] Assignment pending for {key}: {error}')
+                errors.append(f'{key}: {error}')
 
         for key in list(managed):
             if key in active:
@@ -201,4 +203,19 @@ def reconcile_folder(folder, assignments, path_map):
                 path_map[key] = destination
             except (OSError, ValueError) as error:
                 print(f'[Sync] Return pending for {key}: {error}')
+                errors.append(f'{key}: {error}')
         return path_map
+
+
+def command_result(folder, command_id):
+    with _LOCK:
+        return _load(Path(folder).resolve()).get('commands', {}).get(command_id)
+
+
+def remember_command(folder, command_id):
+    with _LOCK:
+        root = Path(folder).resolve()
+        journal = _load(root)
+        journal.setdefault('commands', {})[command_id] = True
+        journal['commands'] = dict(list(journal['commands'].items())[-200:])
+        _save(root, journal)

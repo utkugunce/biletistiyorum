@@ -1,96 +1,33 @@
-const SUPABASE_URL = process.env.SUPABASE_URL || "https://kgchdufcqgyhycgyydhf.supabase.co";
-const SUPABASE_KEY = process.env.SUPABASE_KEY || "sb_publishable_aT8iwPOs6AOg5HfaAQpGhg_TlvHwG2T";
-
-function getHeaders(extra = {}) {
-  const h = {
-    apikey: SUPABASE_KEY,
-    "Content-Type": "application/json",
-    ...extra
-  };
-  if (SUPABASE_KEY.startsWith("eyJ")) {
-    h.Authorization = `Bearer ${SUPABASE_KEY}`;
-  }
-  return h;
-}
+import { database, loadSystemState, tokenHash, assignedKeys, requestMatch, matchState, fail, HttpError } from '../lib/store.js';
 
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, apikey, Authorization");
-  if (req.method === "OPTIONS") return res.status(200).end();
-
-  if (req.method !== "GET") {
-    return res.status(405).json({ detail: "Method not allowed" });
-  }
-
-  const rawQ = (req.query.q || "").trim();
-  if (!rawQ || rawQ.length < 4) {
-    return res.status(200).json([]);
-  }
-
-  const qLower = rawQ.toLowerCase();
-  const digitsOnly = rawQ.replace(/\D/g, "");
-
+  res.setHeader('Cache-Control', 'no-store');
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  if (req.method !== 'GET') return res.status(405).json({ detail: 'Method not allowed' });
   try {
-    const sbRes = await fetch(
-      `${SUPABASE_URL}/rest/v1/portal_requests?id=neq.__SYSTEM_STATE__&select=id,match_name,person,phone,requested_count,target_block,assigned_block,assigned_seats,status,whatsapp_sent,created_at&order=created_at.desc`,
-      { headers: getHeaders() }
-    );
-    if (!sbRes.ok) {
-      return res.status(500).json({ detail: "Veritabanı hatası." });
-    }
-
-    const allReqs = await sbRes.json();
-    if (!Array.isArray(allReqs)) {
-      return res.status(200).json([]);
-    }
-
-    const filtered = allReqs.filter((r) => {
-      const rId = String(r.id || "").toLowerCase();
-      // Match by exact or prefix ZS- request id
-      if (qLower.startsWith("zs-") && rId === qLower) {
-        return true;
-      }
-      if (rId === qLower) {
-        return true;
-      }
-      // Match by phone number (at least 7 matching digits to prevent broad collision)
-      if (digitsOnly.length >= 7) {
-        const rPhoneDigits = String(r.phone || "").replace(/\D/g, "");
-        if (rPhoneDigits && (rPhoneDigits.endsWith(digitsOnly) || digitsOnly.endsWith(rPhoneDigits))) {
-          return true;
-        }
-      }
-      return false;
-    });
-
-    // Data minimization: Return only sanitized tracking fields (do not leak private notes or full phone)
-    const sanitized = filtered.map((r) => {
-      const asg = Array.isArray(r.assigned_seats) ? r.assigned_seats : [];
-      const reqCount = parseInt(r.requested_count || 1, 10);
-      const isComp = asg.length >= reqCount && reqCount > 0;
-      const isPart = asg.length > 0 && !isComp;
-      const maskedPhone = r.phone ? r.phone.replace(/(\d{3})\d{4}(\d{2})/, "$1****$2") : "";
-
+    const token = String(req.headers['x-tracking-token'] || '');
+    const split = token.lastIndexOf('.');
+    const id = token.slice(0, split), secret = token.slice(split + 1);
+    if (split < 1 || !/^[a-f0-9]{64}$/.test(secret))
+      throw new HttpError(401, 'Talebinizin güvenli takip bağlantısını kullanınız. Kod veya telefon numarası tek başına erişim sağlamaz.');
+    const state = await loadSystemState();
+    if (state.deleted_requests?.[id] || !state.tracking_access?.[id] ||
+        tokenHash(secret) !== state.tracking_access[id]) throw new HttpError(403, 'Geçersiz takip bağlantısı.');
+    const rows = await database(`?id=eq.${encodeURIComponent(id)}&select=id,match_name,person,phone,requested_count,target_block,created_at`);
+    return res.status(200).json(rows.map(original => {
+      const row = { ...original, ...state.request_overrides?.[original.id] };
+      const keys = assignedKeys(row, state);
+      const count = keys.length, complete = count >= row.requested_count;
       return {
-        id: r.id,
-        match_name: r.match_name,
-        person: r.person,
-        masked_phone: maskedPhone,
-        requested_count: reqCount,
-        assigned_count: asg.length,
-        target_block: r.target_block,
-        assigned_block: r.assigned_block,
-        assigned_seats: asg,
-        status: r.status,
-        fulfillment_status: isComp ? "completed" : isPart ? "partial" : "pending",
-        whatsapp_sent: Boolean(r.whatsapp_sent),
-        created_at: r.created_at
+        id: row.id, match_name: row.match_name, person: row.person,
+        masked_phone: row.phone ? '•••• ' + row.phone.replace(/\D/g, '').slice(-4) : '',
+        requested_count: row.requested_count, target_block: row.target_block,
+        assigned_block: keys[0]?.split(':')[0] || '', assigned_seats: keys.map(k => k.split(':')[1]),
+        assigned_count: count, status: complete ? 'assigned' : 'pending',
+        fulfillment_status: complete ? 'completed' : count ? 'partial' : 'pending',
+        whatsapp_sent: Boolean(matchState(state, requestMatch(row, state)).sent_map?.[id]),
+        created_at: row.created_at,
       };
-    });
-
-    return res.status(200).json(sanitized);
-  } catch (e) {
-    return res.status(500).json({ detail: "Sorgu hatası: " + e.message });
-  }
+    }));
+  } catch (error) { return fail(res, error); }
 }

@@ -121,19 +121,19 @@
     <div class="topbar-right">
             <div class="stats-badge-group">
         <span class="stat-chip" title="Bu maçtaki toplam bilet/koltuk">
-          <strong id="statTotalPdf">0</strong> Bilet
+          <strong id="statTotalPdf">0</strong> PDF
         </span>
         <span class="stat-chip stat-chip-assigned" title="Kişilere dağıtılan bilet sayısı">
-          <strong id="statAssignedPdf">0</strong> Dağıtılan
+          <strong id="statAssignedPdf">0</strong> Atanan koltuk
         </span>
         <span class="stat-chip stat-chip-available" title="Boşta veya 'diğer' klasöründeki biletler">
-          <strong id="statAvailablePdf">0</strong> Boş/Diğer
+          <strong id="statAvailablePdf">0</strong> Boş bilet
         </span>
       </div>
 
-      <div id="localServiceStatusBadge" class="local-status-pill online" title="Windows Yerel PDF Servisi Durumu">
+      <div id="localServiceStatusBadge" class="local-status-pill offline" title="Windows Yerel PDF Servisi Durumu">
         <span class="status-dot"></span>
-        <span class="status-text">Yerel Servis: Bağlı</span>
+        <span class="status-text">Servis durumu kontrol ediliyor</span>
       </div>
 
       <button class="btn btn-whatsapp btn-xs" id="btnOpenDispatchModal" title="WhatsApp Bilet Dağıtım Merkezi">
@@ -775,11 +775,11 @@
         </div>
         <div class="form-section">
           <label class="form-label">Yeni Şifre</label>
-          <input type="password" id="inputNewPassword" class="form-input" placeholder="Yeni şifreniz (en az 4 karakter)" required minlength="4" />
+          <input type="password" id="inputNewPassword" class="form-input" placeholder="Yeni şifreniz (en az 12 karakter)" required minlength="12" />
         </div>
         <div class="form-section">
           <label class="form-label">Yeni Şifre (Tekrar)</label>
-          <input type="password" id="inputNewPasswordConfirm" class="form-input" placeholder="Yeni şifreyi tekrar yazın" required minlength="4" />
+          <input type="password" id="inputNewPasswordConfirm" class="form-input" placeholder="Yeni şifreyi tekrar yazın" required minlength="12" />
         </div>
         <div id="changePwdErrorMsg" class="login-error-msg hidden" style="margin-top:8px;"></div>
         <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">

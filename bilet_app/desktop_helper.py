@@ -64,10 +64,20 @@ def open_folder_on_user_desktop(target_dir: Path):
         si.dwFlags = 1  # STARTF_USESHOWWINDOW
         si.wShowWindow = 1  # SW_SHOWNORMAL
 
+        k32.CreateProcessW.argtypes = [ctypes.c_wchar_p, ctypes.c_wchar_p,
+            ctypes.c_void_p, ctypes.c_void_p, ctypes.c_bool, ctypes.c_ulong,
+            ctypes.c_void_p, ctypes.c_wchar_p, ctypes.POINTER(STARTUPINFOW),
+            ctypes.POINTER(PROCESS_INFORMATION)]
+        k32.CreateProcessW.restype = ctypes.c_bool
+        k32.CloseHandle.argtypes = [ctypes.c_void_p]
+        u32.OpenDesktopW.argtypes = [ctypes.c_wchar_p, ctypes.c_ulong, ctypes.c_bool, ctypes.c_ulong]
+        u32.OpenDesktopW.restype = ctypes.c_void_p
+        u32.SetThreadDesktop.argtypes = [ctypes.c_void_p]
+        command_line = ctypes.create_unicode_buffer(cmd)
         pi = PROCESS_INFORMATION()
-        k32.CreateProcessW(
+        created = k32.CreateProcessW(
             None,
-            cmd,
+            command_line,
             None,
             None,
             False,
@@ -77,6 +87,13 @@ def open_folder_on_user_desktop(target_dir: Path):
             ctypes.byref(si),
             ctypes.byref(pi),
         )
+
+        if not created:
+            raise OSError("Explorer process could not be created")
+        if pi.hThread:
+            k32.CloseHandle(pi.hThread)
+        if pi.hProcess:
+            k32.CloseHandle(pi.hProcess)
 
         # Pencere açıldıktan sonra WinSta0\default masaüstüne bağlanıp pencereyi en öne getir
         h_default = u32.OpenDesktopW("default", 0, False, 0x10000000)
@@ -113,5 +130,6 @@ def open_folder_on_user_desktop(target_dir: Path):
                     if fg_tid and cur_tid != fg_tid:
                         u32.AttachThreadInput(cur_tid, fg_tid, False)
                     break
+        return True
     except Exception as e:
-        print("open_folder_on_user_desktop error:", e)
+        raise OSError("Windows Explorer could not be started") from e

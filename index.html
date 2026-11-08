@@ -132,12 +132,13 @@
                 <i class="ph-bold ph-user-circle"></i>
                 <input
                   type="text"
-                  id="inputPersonName"
+                  id="inputPersonName" list="staffSuggestions" autocomplete="name"
                   class="form-ctrl"
                   placeholder="Gruplardan adınızı seçin veya buraya yazın..."
                   required
                 />
               </div>
+              <datalist id="staffSuggestions"></datalist>
               <div id="selectedPersonBadge" class="selected-person-pill hidden">
                 <div class="badge-left">
                   <i class="ph-bold ph-check-circle"></i>
@@ -151,6 +152,7 @@
             </div>
 
             <!-- Gruplandırılmış, Açılır-Kapanır Personel Akordeonu -->
+            <details class="staff-directory"><summary>Gruplardan seç (isteğe bağlı)</summary>
             <div class="staff-accordion-wrapper">
               <div class="accordion-toolbar">
                 <div class="staff-search-box">
@@ -177,6 +179,7 @@
               </div>
             </div>
 
+            </details>
             <!-- Gizli dropdown (arka plan uyumluluğu için) -->
             <select id="selectStaffDropdown" class="hidden"></select>
           </div>
@@ -263,13 +266,13 @@
             <div class="form-row-full" style="margin-top: 14px;">
               <div class="form-group">
                 <label for="inputPhoneNumber" class="input-label">
-                  WhatsApp Telefon Numarası <span class="opt">(Biletiniz WhatsApp üzerinden iletilecektir)</span>
+                  WhatsApp Telefon Numarası <span class="required">*</span> <span class="opt">(Biletiniz WhatsApp üzerinden iletilecektir)</span>
                 </label>
                 <div class="input-with-icon">
                   <i class="ph-bold ph-whatsapp-logo" style="color: #22c55e;"></i>
                   <input
                     type="tel"
-                    id="inputPhoneNumber"
+                    id="inputPhoneNumber" required autocomplete="tel" inputmode="tel"
                     class="form-ctrl"
                     placeholder="05xx xxx xx xx"
                   />
@@ -407,7 +410,7 @@
       </div>
       <h2>Bilet Talebiniz Alındı!</h2>
       <p class="modal-sub">
-        Talebiniz Zeren Spor Bilet Yönetimi'ne iletilmiştir.
+        Talebiniz alındı. Koltuk tahsisi kesinleştiğinde biletler WhatsApp üzerinden iletilecektir.
       </p>
 
       <div class="success-ticket-receipt">
@@ -415,7 +418,7 @@
           <span class="rc-label">Takip Kodu:</span>
           <div style="display:flex; align-items:center; gap:8px;">
             <strong class="rc-val rc-code" id="receiptCode">ZS-0000</strong>
-            <button type="button" class="btn-copy-code" id="btnCopyReceiptCode" title="Kodu Kopyala" style="background:none; border:none; cursor:pointer; color:#7e22ce; font-size:16px; padding:2px 6px;">
+            <button type="button" class="btn-copy-code" id="btnCopyReceiptCode" title="Güvenli Takip Bağlantısını Kopyala" style="background:none; border:none; cursor:pointer; color:#7e22ce; font-size:16px; padding:2px 6px;">
               <i class="ph-bold ph-copy" id="iconCopyCode"></i>
             </button>
           </div>
@@ -433,6 +436,10 @@
           <span class="rc-val" id="receiptCountBlock">2 Adet · 121 Blok</span>
         </div>
       </div>
+
+      <label for="receiptTrackingLink" class="input-label">Kişisel takip bağlantınız</label>
+      <input id="receiptTrackingLink" class="form-ctrl" type="text" readonly aria-describedby="trackingPrivacyHint" />
+      <p id="trackingPrivacyHint" style="font-size:12px; color:#475569; margin-top:6px;">Bu bağlantı talebinize erişim sağlar. Güvenli bir yerde saklayınız.</p>
 
       <div class="modal-actions-group" style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">
         <button type="button" class="btn-primary-portal" id="btnTrackMyRequest" style="width: 100%; justify-content: center;">

@@ -1586,3 +1586,15 @@ select.form-ctrl {
   background: rgba(255, 255, 255, 0.1);
   color: #ffffff;
 }
+
+.staff-directory { margin-top: 12px; }
+.staff-directory summary { cursor: pointer; padding: 12px 0; color: #5b21b6; font-weight: 700; }
+.rc-code, #trackResultsContainer { overflow-wrap: anywhere; }
+.form-section-block { padding-top: 20px; padding-bottom: 20px; }
+button:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid #6d28d9; outline-offset: 3px; }
+@media (max-width: 768px) {
+  .form-section-block { padding-top: 14px; padding-bottom: 14px; }
+  .selected-match-meta-pill { flex-wrap: wrap; }
+  .nav-tab-btn { min-height: 44px; }
+  .step-btn, .cnt-chip { min-width: 44px; min-height: 44px; }
+}

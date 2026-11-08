@@ -6,6 +6,9 @@ ana Bilet Takip / Dağıtım paneliyle çift yönlü senkronize eder.
 """
 
 import json
+import uuid
+import sys
+from cloud_bridge import call as cloud_call, match_id_for
 import os
 import re
 import urllib.parse
@@ -14,76 +17,34 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://kgchdufcqgyhycgyydhf.supabase.co").rstrip("/")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "sb_publishable_aT8iwPOs6AOg5HfaAQpGhg_TlvHwG2T")
+def _cloud_match_id():
+    server = sys.modules.get('server') or sys.modules.get('__main__')
+    manager = getattr(server, 'state_mgr', None)
+    if manager is not None:
+        return match_id_for(manager.active_folder)
+    if os.environ.get('ZEREN_MATCH_ID'):
+        return os.environ['ZEREN_MATCH_ID']
+    raise ValueError('Active cloud match must be configured')
 
 
-def _supabase_headers(extra: Optional[Dict[str, str]] = None) -> Dict[str, str]:
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Content-Type": "application/json",
-    }
-    if SUPABASE_KEY.startswith("eyJ"):
-        headers["Authorization"] = f"Bearer {SUPABASE_KEY}"
-    if extra:
-        headers.update(extra)
-    return headers
-
-
-def supabase_upsert_request(req_obj: Dict[str, Any]) -> bool:
-    """Talebi Supabase'e ekler veya günceller."""
-    try:
-        row = {
-            "id": req_obj.get("id", ""),
-            "match_name": req_obj.get("match_name", "Zeren Spor - Kuzeyboru"),
-            "person": req_obj.get("person", ""),
-            "department": req_obj.get("department", ""),
-            "phone": req_obj.get("phone", ""),
-            "ticket_type": req_obj.get("ticket_type", "Davetiye / Protokol"),
-            "requested_count": int(req_obj.get("requested_count", 1)),
-            "target_block": req_obj.get("target_block", "121"),
-            "description": req_obj.get("description", ""),
-            "status": req_obj.get("status", "pending"),
-            "assigned_seats": req_obj.get("assigned_seats", []),
-            "assigned_block": req_obj.get("assigned_block", ""),
-            "whatsapp_sent": bool(req_obj.get("whatsapp_sent", False)),
-            "whatsapp_sent_at": req_obj.get("whatsapp_sent_at"),
-        }
-        url = f"{SUPABASE_URL}/rest/v1/portal_requests"
-        data = json.dumps(row).encode("utf-8")
-        req = urllib.request.Request(
-            url,
-            data=data,
-            method="POST",
-            headers=_supabase_headers({"Prefer": "resolution=merge-duplicates,return=minimal"}),
-        )
-        with urllib.request.urlopen(req, timeout=4) as res:
-            return res.status in (200, 201, 204)
-    except Exception:
-        return False
+def supabase_upsert_request(req_obj: Dict[str, Any], operation="metadata") -> bool:
+    # Compatibility name: all writes now go through the authenticated bridge.
+    cloud_call("/api/companion/request", "POST", {"operation": operation, "request": req_obj},
+               match_id=req_obj.get("match_id") or _cloud_match_id())
+    return True
 
 
 def supabase_delete_request(request_id: str) -> bool:
-    """Talebi Supabase'den siler."""
-    try:
-        enc_id = urllib.parse.quote(request_id, safe="")
-        url = f"{SUPABASE_URL}/rest/v1/portal_requests?id=eq.{enc_id}"
-        req = urllib.request.Request(url, method="DELETE", headers=_supabase_headers())
-        with urllib.request.urlopen(req, timeout=4) as res:
-            return res.status in (200, 204)
-    except Exception:
-        return False
+    rows = load_portal_requests()
+    row = next((r for r in rows if r.get("id") == request_id), {})
+    cloud_call("/api/companion/request", "POST", {"operation": "delete", "request_id": request_id},
+               match_id=row.get("match_id") or _cloud_match_id())
+    return True
 
 
 def supabase_clear_all() -> bool:
-    """Tüm talepleri Supabase'den temizler."""
-    try:
-        url = f"{SUPABASE_URL}/rest/v1/portal_requests?id=neq.__SYSTEM_STATE__"
-        req = urllib.request.Request(url, method="DELETE", headers=_supabase_headers())
-        with urllib.request.urlopen(req, timeout=4) as res:
-            return res.status in (200, 204)
-    except Exception:
-        return False
+    cloud_call("/api/companion/request", "POST", {"operation": "clear"}, match_id=_cloud_match_id())
+    return True
 
 PORTAL_DATA_DIR = Path(__file__).resolve().parent / "data"
 PORTAL_REQUESTS_FILE = PORTAL_DATA_DIR / "portal_requests.json"
@@ -276,7 +237,7 @@ def generate_request_code(existing_count: int) -> str:
     return f"ZEREN-{year}-{existing_count + 1:04d}"
 
 
-def create_portal_request(payload: Dict[str, Any]) -> Dict[str, Any]:
+def create_portal_request(payload: Dict[str, Any], idempotency_key=None) -> Dict[str, Any]:
     requests = load_portal_requests()
     req_code = generate_request_code(len(requests))
 
@@ -320,66 +281,37 @@ def create_portal_request(payload: Dict[str, Any]) -> Dict[str, Any]:
         "whatsapp_sent_at": None,
     }
 
+    cloud_url = os.environ.get("ZEREN_CLOUD_URL", "https://biletistiyorum.vercel.app").rstrip("/")
+    request = urllib.request.Request(cloud_url + "/api/portal/request", method="POST",
+        data=json.dumps(entry).encode(), headers={"Content-Type": "application/json",
+        "Idempotency-Key": idempotency_key or (uuid.uuid4().hex + uuid.uuid4().hex)})
+    with urllib.request.urlopen(request, timeout=10) as response:
+        stored = json.loads(response.read().decode())
+    entry.update(stored)
+    requests = [r for r in requests if r.get("id") != entry["id"]]
     requests.insert(0, entry)
     save_portal_requests(requests)
-    supabase_upsert_request(entry)
     return entry
 
 
 def sync_requests_from_vercel() -> int:
-    added = 0
-    local_reqs = load_portal_requests()
-    existing_map = {r.get("id"): r for r in local_reqs if r.get("id")}
-
-    # 1. Önce doğrudan Supabase'den çek
     try:
-        sb_url = f"{SUPABASE_URL}/rest/v1/portal_requests?id=neq.__SYSTEM_STATE__&select=*&order=created_at.desc"
-        req = urllib.request.Request(sb_url, headers=_supabase_headers())
-        with urllib.request.urlopen(req, timeout=4) as res:
-            if res.status == 200:
-                sb_rows = json.loads(res.read().decode("utf-8"))
-                if isinstance(sb_rows, list):
-                    for sr in sb_rows:
-                        rid = sr.get("id")
-                        if not rid or rid == "__SYSTEM_STATE__":
-                            continue
-                        if not sr.get("phone") and sr.get("person"):
-                            sr["phone"] = get_person_phone(sr["person"])
-                        if rid not in existing_map:
-                            local_reqs.append(sr)
-                            existing_map[rid] = sr
-                            added += 1
-                        else:
-                            # Durum veya koltuk güncellemesi varsa senkronize et
-                            ex = existing_map[rid]
-                            if sr.get("status") != ex.get("status") or sr.get("assigned_seats") != ex.get("assigned_seats") or sr.get("whatsapp_sent") != ex.get("whatsapp_sent"):
-                                ex.update(sr)
-                                added += 1
-    except Exception:
-        pass
-
-    # 2. Yedek olarak Vercel API'den de kontrol et
-    try:
-        url = "https://biletistiyorum.vercel.app/api/portal/request"
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=3) as res:
-            if res.status == 200:
-                cloud_reqs = json.loads(res.read().decode("utf-8"))
-                if cloud_reqs and isinstance(cloud_reqs, list):
-                    for cr in cloud_reqs:
-                        rid = cr.get("id")
-                        if rid and rid not in existing_map:
-                            if not cr.get("phone") and cr.get("person"):
-                                cr["phone"] = get_person_phone(cr["person"])
-                            local_reqs.append(cr)
-                            existing_map[rid] = cr
-                            added += 1
-    except Exception:
-        pass
-
-    if added > 0:
-        save_portal_requests(local_reqs)
-    return added
+        match_id = _cloud_match_id()
+        remote = cloud_call("/api/companion/requests", match_id=match_id)
+        local = load_portal_requests()
+        ids = {r["id"] for r in remote}
+        # Preserve offline/manual records and other matches, but honor cloud tombstones.
+        retained = [r for r in local if r.get("id") not in ids
+                    and not (r.get("cloud_managed") and r.get("match_id") == match_id)]
+        for row in remote:
+            row["cloud_managed"] = True
+        combined = remote + retained
+        if combined != local:
+            save_portal_requests(combined)
+            return len(remote)
+    except Exception as error:
+        print(f"[Portal] Cloud sync pending: {type(error).__name__}")
+    return 0
 
 
 def get_requests_for_match(match_name: str) -> List[Dict[str, Any]]:
@@ -449,8 +381,8 @@ def update_request_fulfillment(
     else:
         target_req["status_label"] = "İnceleniyor (Bekliyor)"
 
+    supabase_upsert_request(target_req, operation="assign")
     save_portal_requests(requests)
-    supabase_upsert_request(target_req)
     return target_req
 
 
@@ -471,8 +403,8 @@ def delete_portal_request(request_id: str) -> Optional[Dict[str, Any]]:
 
 
 def clear_all_portal_requests() -> None:
-    save_portal_requests([])
     supabase_clear_all()
+    save_portal_requests([])
 
 
 def set_request_whatsapp_sent(request_id: str, sent: bool = True) -> Optional[Dict[str, Any]]:
@@ -482,8 +414,8 @@ def set_request_whatsapp_sent(request_id: str, sent: bool = True) -> Optional[Di
         return None
     target_req["whatsapp_sent"] = sent
     target_req["whatsapp_sent_at"] = datetime.now().isoformat() if sent else None
+    supabase_upsert_request(target_req, operation="sent")
     save_portal_requests(requests)
-    supabase_upsert_request(target_req)
     return target_req
 
 
@@ -500,8 +432,8 @@ def update_portal_request(request_id: str, payload: Dict[str, Any]) -> Optional[
             target_req["requested_count"] = int(payload["requested_count"])
         except Exception:
             pass
-    save_portal_requests(requests)
     supabase_upsert_request(target_req)
+    save_portal_requests(requests)
     return target_req
 
 
@@ -513,8 +445,8 @@ def update_request_phone(request_id: str, phone: str) -> Optional[Dict[str, Any]
         target_req["phone"] = clean_p
         if target_req.get("person"):
             save_person_phone(target_req["person"], clean_p)
-        save_portal_requests(requests)
         supabase_upsert_request(target_req)
+        save_portal_requests(requests)
         return target_req
     return None
 

@@ -60,7 +60,7 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(req).catch(() => {
         return new Response(JSON.stringify({ error: "İnternet bağlantınızı kontrol edin." }), {
-          headers: { "Content-Type": "application/json" }
+          status: 503, headers: { "Content-Type": "application/json" }
         });
       })
     );

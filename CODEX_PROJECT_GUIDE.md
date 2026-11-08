@@ -20,13 +20,13 @@ gibi farklı lokasyonlarda yer almaktadır.
 4. **WhatsApp ile Tek Tıkla Dağıtım:** Admin panelindeki WhatsApp butonuna basıldığında:
    - İlgili personelin WhatsApp sohbet penceresi açılır (`whatsapp://send?phone=...`).
    - Adminin Windows masaüstünde personelin o talebine ait bilet klasörü otomatik olarak açılır. Admin biletleri doğrudan sohbete sürükleyip bırakabilir.
-5. **Durum Takibi:** Biletleri WhatsApp üzerinden gönderilen talepler ana listeden "Gönderilen Talepler" sekmesine otomatik aktarılır.
+5. **Durum Takibi:** Operatör "Gönderildi olarak işaretle" dediğinde yalnız ilgili talep "Gönderilen Talepler" sekmesine aktarılır. Sohbeti/klasörü açmak teslimat teyidi değildir.
 
 ---
 
 ## 2. Çift Katmanlı Hibrit Mimari (Dual-Tier Hybrid Architecture)
 
-Sistem iki ana parçadan oluşur ve Supabase üzerinden gerçek zamanlı haberleşir:
+Sistem iki ana parçadan oluşur. Supabase erişimi yalnız Vercel sunucusundadır; Windows, yetkili companion API üzerinden polling yapar:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -52,7 +52,7 @@ Sistem iki ana parçadan oluşur ve Supabase üzerinden gerçek zamanlı haberle
 │  FastAPI Yerel Sunucu (bilet_app/server.py - 127.0.0.1:8765)                │
 │                                                                             │
 │  ├── sync_helper.py:                                                        │
-│  │   Supabase'deki `virtual_assignments` haritasını okur.                  │
+│  │   Yetkili companion API’den maçın atamalarını okur.                     │
 │  │   Yerel diskteki PDF'leri `<Kişi Adı>/<request_id>/` klasörüne taşır.    │
 │  │                                                                          │
 │  └── desktop_helper.py:                                                     │
@@ -70,7 +70,7 @@ Sistem iki ana parçadan oluşur ve Supabase üzerinden gerçek zamanlı haberle
 ### 3.1. Personel Talep Portalı (`portal.html` / `/bilet-istiyorum` / `/talep`)
 - Kulüp personelinin maça bilet talep ettiği mobil uyumlu web arayüzü.
 - **Alanlar:** Ad Soyad, Departman / Görev, WhatsApp Telefon No, Talep Edilen Blok (Örn: 102 Blok, Saha İçi), Bilet Adedi, Not / Açıklama.
-- Form gönderildiğinde Supabase `portal_requests` tablosuna benzersiz `ZS-XXX` formatında `request_id` ile `status: "pending"` olarak eklenir.
+- Form gönderildiğinde Supabase `portal_requests` tablosuna sunucuda üretilen UUID tabanlı `ZS-...` formatında `request_id` ile `status: "pending"` olarak eklenir.
 
 ### 3.2. Yönetici Paneli (`admin.html` + `app.js` + `styles.css`)
 - **Üst Menü (Primary Topbar):**
@@ -98,19 +98,19 @@ Sistem iki ana parçadan oluşur ve Supabase üzerinden gerçek zamanlı haberle
 
 ### 3.3. Bulut Backend (`api/admin.js` - Vercel Serverless)
 - Tüm admin yetkilendirme ve state yönetimini sağlar.
-- **Şifre Koruması:** `ZEREN_ADMIN_PASSWORD` (Varsayılan: `zeren2026`). HMAC SHA-256 token üretilir (`zeren_admin_token`).
-- Token `localStorage` ve Cookie'de saklanır; sayfa yenilendiğinde parola tekrar sorulmaz.
+- **Şifre Koruması:** İlk üretim geçişinde `ZEREN_ADMIN_PASSWORD` en az 12 karakterle zorunludur. Parola scrypt hash olarak tutulur.
+- `zeren_admin_token` rastgele, 7 gün süreli HttpOnly/Secure çerezdir; sunucuda yalnız hash ve süre saklanır. Token localStorage’a yazılmaz. Çıkış/parola değişimi oturumları iptal eder.
 - `/api/state`: Aktif maç durumunu, blokları, biletleri ve atamaları döner.
 - `/api/excel/summary`: Portal taleplerini Supabase'den çeker, atanan koltukları eşleştirir, WhatsApp gönderim durumlarını (`sent_map`) işler.
 - `/api/excel/assign-request`: Talebe seçili koltukları veya ardışık boş koltukları otomatik bağlar.
-- `/api/open-explorer`: Yerel Windows Gezgini'ni tetiklemek için `__SYSTEM_STATE__` kaydına `explorer_cmd` yazar.
+- `/api/open-explorer`: Yerel Windows Gezgini'ni tetiklemek için ilgili maçın kalıcı `explorer_commands` kuyruğuna benzersiz komut yazar.
 
 ### 3.4. Yerel Arka Plan Servisi (`bilet_app/server.py`)
 - Python 3 + FastAPI tabanlı yerel daemon (Port 8765).
 - **Otomatik Senkronizasyon Döngüsü (`_auto_folder_sync_loop`):**
-  - Her 1.5 saniyede bir Supabase'deki `__SYSTEM_STATE__` kaydını sorgular.
+  - Her 1.5 saniyede bir yetkili `/api/companion/state` endpoint’inden bağlı maçın atamalarını ve komutlarını sorgular.
   - Yeni bir atama varsa, ana maç klasöründeki PDF biletleri otomatik olarak `<Kişi>/<request_id>/` klasörüne taşır.
-  - Buluttan gelen `explorer_cmd` emrini yakalayarak ilgili klasörü kullanıcının masaüstünde `explorer.exe` ile açar (`desktop_helper.py`).
+  - Buluttan gelen maç/talep bazlı kuyruk komutlarını işleyerek ilgili klasörü kullanıcının masaüstünde `explorer.exe` ile açar (`desktop_helper.py`).
 
 ---
 
@@ -135,7 +135,9 @@ Tüm bulut durumu Supabase'deki `portal_requests` tablosunda saklanır:
 Sistem çapındaki dinamik ayarlar tek bir özel satırın `assigned_seats` jsonb alanında tutulur:
 ```json
 {
-  "admin_password": "...",
+  "version": 1,
+  "admin_password_hash": "<scrypt salt:hash>",
+  "sessions": {"<token hash>": {"expires_at": 0}},
   "virtual_assignments": {
     "102:7-1": {
       "group": "Kerem Taha Solmaz",
@@ -149,12 +151,20 @@ Sistem çapındaki dinamik ayarlar tek bir özel satırın `assigned_seats` json
   "custom_phones": {
     "Kerem Taha Solmaz": "0533..."
   },
-  "explorer_cmd": {
-    "id": "1731055000",
-    "group": "Kerem Taha Solmaz",
+  "explorer_commands": [{
+    "id": "<uuid>",
+    "match_id": "20261108_kuzeyboru",
+    "group": "Örnek Personel",
     "request_id": "ZS-257",
-    "ts": 1731055000000
-  }
+    "status": "pending",
+    "attempts": 0,
+    "ts": 0
+  }],
+  "request_overrides": {},
+  "deleted_requests": {},
+  "tracking_access": {},
+  "match_states": {},
+  "match_templates": {}
 }
 ```
 
@@ -171,7 +181,9 @@ Sistem çapındaki dinamik ayarlar tek bir özel satırın `assigned_seats` json
 ├── api/
 │   ├── admin.js             # Vercel Serverless API (Tüm /api/* rotalarını yönetir)
 │   ├── base_state.json      # Varsayılan koltuk ve blok verisi (102 Blok & Saha İçi)
-│   └── portal.js            # Talep formu REST API işleyicisi
+│   ├── request.js           # İdempotent talep alımı
+│   └── my-requests.js       # Gizli takip anahtarıyla tek talep görüntüleme
+├── lib/                     # store.js (CAS/veri), auth.js, admin-actions.js
 ├── bilet_app/               # Yerel Windows Eşlikçi Uygulaması
 │   ├── server.py            # FastAPI yerel sunucu (Port 8765) + senkronizasyon döngüsü
 │   ├── sync_helper.py       # Supabase -> Yerel disk bilet taşıma mantığı
@@ -199,7 +211,7 @@ Sistem çapındaki dinamik ayarlar tek bir özel satırın `assigned_seats` json
    - Bir koltuğa tıklanması veya sahne boşluğuna tıklanması, geçici karartma filtresini (`dimmed-group`) derhal sıfırlar.
 3. **WhatsApp Dağıtım Protokolü:**
    - WhatsApp butonuna tıklandığında doğrudan tekli dosya indirme yerine; yerel dosya gezgini tetiklenir (`whatsapp://send?phone=...` + Gezgin açılışı).
-   - Gönderim yapıldığı an talep `sent_map` içine kaydedilir ve "Gönderilen Talepler" sekmesine taşınır.
+   - Operatör ayrı “Gönderildi olarak işaretle” eylemiyle `sent_map[request_id]` ve zamanını kaydeder. İşaret geri alınabilir.
 4. **Yerel Arka Plan Servisi Sürekliliği:**
    - Windows üzerinde `bilet_app/server.py` arka planda çalışmıyorsa, bulutta atanan biletler yerel klasörlere taşınamaz. Bilgisayar yeniden başladığında servisin ayakta olduğu doğrulanmalıdır.
 
@@ -217,7 +229,7 @@ Sistem çapındaki dinamik ayarlar tek bir özel satırın `assigned_seats` json
 cd "c:\Users\UtkuGünçe-ZerenSporK\Downloads\wetransfer_121-blok_2026-10-15_1215\121 BLOK"
 python "bilet_app\server.py"
 ```
-*(Sunucu 0.0.0.0:8765 adresinde çalışır ve yerel maç klasörünü dinler).*
+*(Sunucu varsayılan olarak 127.0.0.1:8765 adresinde çalışır. Ortam değişkenleri ve maç eşleşmesi için `DEPLOYMENT_CHECKLIST.md` izlenmelidir.)*
 
 ---
 
@@ -264,3 +276,36 @@ Bu değişiklikler yerel Python servisindedir. Windows bilgisayarda güncel
 dosyalar bulunmalı ve servis yeniden başlatılmalıdır. Vercel dağıtımı yerel
 Windows servisini güncellemez. Gerçek Explorer/Windows oturum kabul testi ayrı
 yapılmalıdır; Linux üzerindeki dosya testleri bu kabul testinin yerine geçmez.
+
+## 10. Güvenli bulut/yerel sözleşmesi ve yayın bağımlılıkları
+
+- Supabase `service_role` anahtarı yalnız Vercel ortamında tutulur. Windows
+  `ZEREN_COMPANION_TOKEN` ile sınırlı companion API’yi kullanır. Üretimde anonim
+  tablo erişimi `migrations/001_protect_portal_requests.sql` ile kapatılmalıdır.
+- Yetkili yönetim listesi ile personel takibi ayrıdır. Personel yalnız talebe
+  özel gizli takip bağlantısıyla erişir; isim, telefon veya ID yetki sağlamaz.
+- İlk talep satırı alım kaydıdır. Güncel atama, metadata düzenleme, silme ve
+  gönderim tek sürümlü sistem snapshot’ından hesaplanır. `request_overrides`
+  değişiklikleri, `deleted_requests` silme işaretlerini tutar. Talep satırının
+  eski `status/assigned_seats` alanları doğrudan okunarak güncel durum bulunamaz.
+- PostgREST PATCH, JSON `version` koşuluyla atomik compare-and-swap yapar.
+  Çakışmalar güncel snapshot üzerinden tekrar değerlendirilir. Okuma/yazma
+  hatasında bellek fallback’i veya boş durumla ezme yapılmaz.
+- Eski maçın kök atamaları korunur; diğer maçlar `match_states[match_id]` altında
+  ayrıdır. Her Windows klasörü kendi `cloud_match_id` değeriyle bağlanır.
+- Windows, PDF dosya adlarını ve koltuk şemasını envanter olarak raporlar;
+  PDF içeriği ve mutlak yerel yollar buluta gönderilmez. Elle düzenlenen
+  klasörlerdeki biletler otomatik atamaya karşı korunur. Yerel adminin atama ve
+  talep işlemleri de aynı bulut snapshot’ına uygulanır; bağlantı yokken ikinci
+  bir bağımsız başarılı durum üretilmez.
+- Bulut dosya yükleme ve geri alma gibi desteklenmeyen işlemlerde açık hata
+  döndürür. Fiziksel PDF yükleme/klasör yönetimi Windows panelinde yapılır.
+- Ortak erişilebilirlik davranışı `accessibility.js` içindedir. API sorumlulukları
+  `lib/` altında ayrılmıştır; yeni framework veya veritabanı tablosu gerekmez.
+- `python scripts/sync_copies.py` kök kaynakları dağıtım kopyalarına taşır;
+  `--check` eksik/farklı kopyada hata verir. Eşleme tablosu aynı script içindedir.
+- PWA sürümü `zeren-bilet-pwa-v4` olmuştur. Çevrimdışı API başarısı taklit edilmez.
+- Ortam kurulumu, veri yedeği, RLS geçiş sırası, otomatik kontroller ve gerçek
+  Windows kabulü için `DEPLOYMENT_CHECKLIST.md` temel alınır. Yönetim bağlantısı
+  olmadan yeni güvenli backend’i üretime almak mevcut sistemi kesebilir;
+  önce erişim ve ortam bağımlılıkları tamamlanmalıdır.
