@@ -13,14 +13,36 @@ function getHeaders(extra = {}) {
   return h;
 }
 
+const myReqRateMap = new Map();
+function isMyReqRateLimited(ip, limit = 20, windowMs = 60000) {
+  const now = Date.now();
+  let timestamps = myReqRateMap.get(ip) || [];
+  timestamps = timestamps.filter((t) => now - t < windowMs);
+  if (timestamps.length >= limit) {
+    myReqRateMap.set(ip, timestamps);
+    return true;
+  }
+  timestamps.push(now);
+  myReqRateMap.set(ip, timestamps);
+  return false;
+}
+
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  const origin = req.headers.origin || "";
+  const isAllowed = !origin || origin.includes("biletistiyorum.vercel.app") || origin.includes("localhost") || origin.includes("127.0.0.1") || origin.endsWith(".vercel.app");
+  res.setHeader("Access-Control-Allow-Origin", isAllowed ? (origin || "*") : "https://biletistiyorum.vercel.app");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, apikey, Authorization");
+  res.setHeader("Cache-Control", "private, no-cache, no-store, must-revalidate");
   if (req.method === "OPTIONS") return res.status(200).end();
 
   if (req.method !== "GET") {
     return res.status(405).json({ detail: "Method not allowed" });
+  }
+
+  const clientIp = (req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "local").split(",")[0].trim();
+  if (isMyReqRateLimited(clientIp, 25, 60000)) {
+    return res.status(429).json({ detail: "Çok fazla sorgu yapıldı. Lütfen 1 dakika bekleyiniz." });
   }
 
   const rawQ = (req.query.q || "").trim();

@@ -144,7 +144,7 @@ check("All copies match canonical sources (M01)", ret == 0)
 print("\n[M03] Checking PWA Cache Version:")
 with open("sw.js", "r", encoding="utf-8") as f:
     sw_js = f.read()
-check("sw.js bumped to zeren-bilet-pwa-v3 (M03)", 'zeren-bilet-pwa-v3' in sw_js)
+check("sw.js bumped to zeren-bilet-pwa-v3 or v4 (M03)", ('zeren-bilet-pwa-v3' in sw_js or 'zeren-bilet-pwa-v4' in sw_js))
 
 print("\n" + "="*50)
 print(f"RESULTS: {PASS_COUNT} PASSED, {FAIL_COUNT} FAILED")

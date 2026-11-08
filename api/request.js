@@ -84,11 +84,29 @@ async function generateUniqueRequestId() {
   return `ZS-${Date.now().toString().slice(-4)}`;
 }
 
+const postRateMap = new Map();
+function isPostRateLimited(ip, limit = 5, windowMs = 60000) {
+  const now = Date.now();
+  let timestamps = postRateMap.get(ip) || [];
+  timestamps = timestamps.filter((t) => now - t < windowMs);
+  if (timestamps.length >= limit) {
+    postRateMap.set(ip, timestamps);
+    return true;
+  }
+  timestamps.push(now);
+  postRateMap.set(ip, timestamps);
+  return false;
+}
+
 export default async function handler(req, res) {
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  const origin = req.headers.origin || "";
+  const isAllowed = !origin || origin.includes("biletistiyorum.vercel.app") || origin.includes("localhost") || origin.includes("127.0.0.1") || origin.endsWith(".vercel.app");
+  res.setHeader("Access-Control-Allow-Origin", isAllowed ? (origin || "*") : "https://biletistiyorum.vercel.app");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, apikey, Authorization, X-Admin-Token");
   if (req.method === "OPTIONS") return res.status(200).end();
+
+  const clientIp = (req.headers["x-forwarded-for"] || req.socket?.remoteAddress || "local").split(",")[0].trim();
 
   if (req.method === "GET") {
     const activePwd = await getAdminPassword();
@@ -115,9 +133,17 @@ export default async function handler(req, res) {
   }
 
   if (req.method === "POST") {
+    if (isPostRateLimited(clientIp, 5, 60000)) {
+      return res.status(429).json({
+        detail: "Çok fazla talep gönderildi. Lütfen 1 dakika bekledikten sonra tekrar deneyiniz."
+      });
+    }
     try {
       const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body || {};
       const person = String(body.person || "").trim();
+      if (person.length > 100 || (body.description && String(body.description).length > 1000) || (body.phone && String(body.phone).length > 30)) {
+        return res.status(400).json({ detail: "Geçersiz veya aşırı uzun girdi." });
+      }
       const match = String(body.match_name || "Zeren Spor - Kuzeyboru").trim();
       const count = Math.min(100, Math.max(1, parseInt(body.requested_count || 1, 10)));
       const department = String(body.department || "").trim();
