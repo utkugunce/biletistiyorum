@@ -11,6 +11,7 @@ from pathlib import Path
 import shutil
 import tempfile
 import threading
+import time
 
 JOURNAL_NAME = ".zeren-folder-sync.json"
 _LOCK = threading.RLock()
