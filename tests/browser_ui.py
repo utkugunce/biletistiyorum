@@ -137,6 +137,11 @@ try:
         assert page.locator('#inputTrackQuery').input_value() == access
         print('PASS portal hidden controls, 30 tickets, idempotent submission and secure tracking')
         assert not errors, errors
+        context.route('**/api/auth/check', lambda route: route.abort())
+        page.goto(base + '/admin.html', wait_until='networkidle')
+        assert page.locator('#adminLoginOverlay').is_visible()
+        assert not errors, errors
+        print('PASS failed authentication check preserves the login screen without script errors')
         browser.close()
 finally:
     server.shutdown()

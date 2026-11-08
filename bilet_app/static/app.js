@@ -5,7 +5,7 @@ async function checkLocalCompanionStatus() {
   const badge = document.getElementById("localServiceStatusBadge");
   try {
     const response = await fetch("/api/status", { cache: "no-store", signal: AbortSignal.timeout(3000) });
-    if (!response.ok) return;
+    if (!response.ok) throw new Error("Servis durumu alınamadı");
     const status = await response.json();
     const local = status.service === "zeren-local-daemon";
     const companion = status.companion;
@@ -153,9 +153,8 @@ async function checkAuthAndInit() {
       showLoginOverlay();
     }
   } catch (err) {
-    if (!savedToken) {
-      showLoginOverlay();
-    }
+    isAdminAuthenticated = false;
+    showLoginOverlay();
   }
 }
 
@@ -1500,13 +1499,13 @@ async function handleExcelAssignClick(req) {
     // Koltuk seçilmemişse otomatik olarak boş koltuk bul ve ata
     const needed = req.requested_count - req.assigned_count;
     try {
-      showToast(`${req.person} için ${targetB} bloğundan ${needed} koltuk tahsis ediliyor...`);
+      showToast(`${req.person} için ${needed} koltuk tahsis ediliyor...`);
       const res = await fetch("/api/excel/assign-request", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           request_id: req.request_id,
-          block_id: targetB,
+          block_id: req.target_block || "",
           count: needed,
           group: req.suggested_group,
           subgroup: req.suggested_subgroup,
@@ -1520,7 +1519,8 @@ async function handleExcelAssignClick(req) {
       const data = await res.json();
       updateAppState(data);
       await fetchExcelSummary();
-      showToast(`✅ ${req.person} için ${needed} koltuk ${targetB} bloğuna atandı.`);
+      const totalAssigned = Object.values(data.blocks || {}).flatMap(b => Object.values(b.tickets || {})).filter(t => t.request_id === req.request_id).length;
+      showToast(`✅ ${req.person} için ${totalAssigned - req.assigned_count} koltuk atandı.`);
     } catch (err) {
       showToast(`Hata: ${err.message}`);
     }
