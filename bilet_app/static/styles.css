@@ -468,7 +468,7 @@ body {
   border-bottom: 1.5px solid var(--border-light);
   padding: 0 16px;
   display: flex;
-  flex-wrap: nowrap !important;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
@@ -3607,3 +3607,54 @@ body {
   }
 }
 
+
+/* Responsive controls must fit; clipping the root is not a layout solution. */
+.topbar {
+  height: auto;
+  min-height: 52px;
+  overflow: visible;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  white-space: normal;
+}
+.topbar-left { flex: 1 1 430px; flex-wrap: wrap; }
+.topbar-center { flex: 0 1 auto; min-width: 0; }
+.topbar-right { flex: 1 1 430px; min-width: 0; flex-wrap: wrap; justify-content: flex-end; }
+.match-selector-wrap { min-width: 0; max-width: 100%; }
+.match-dropdown { max-width: 100%; }
+.block-toolbar { height: auto; flex-wrap: wrap; overflow: visible; }
+.toolbar-left, .toolbar-center, .toolbar-right { min-width: 0; flex-wrap: wrap; }
+.toolbar-left { flex: 1 1 350px; }
+.toolbar-center { flex: 1 1 320px; }
+.toolbar-right { flex: 1 1 320px; justify-content: flex-end; }
+.block-info-pill { max-width: 100%; flex-wrap: wrap; white-space: normal; }
+.block-pill-details { white-space: normal; }
+.seat-cell:focus-visible, button:focus-visible, a:focus-visible, select:focus-visible {
+  outline: 3px solid #6d28d9; outline-offset: 3px;
+}
+.seat-owner { font-size: 10px; }
+@media (max-width: 768px) {
+  .topbar-left, .topbar-center, .topbar-right { flex: 1 1 100%; width: 100%; max-width: 100%; }
+  .topbar-left { order: 0; }
+  .topbar-right { order: 1; justify-content: flex-start; }
+  .topbar-center { order: 2; }
+  .view-switch-tabs { width: 100%; min-width: 0; }
+  .view-tab { flex: 1 1 0; min-width: 0; white-space: normal; }
+  .block-toolbar .toolbar-left, .block-toolbar .toolbar-center, .block-toolbar .toolbar-right {
+    flex: 1 1 100%; width: 100%; max-width: 100%; margin: 0; justify-content: flex-start;
+  }
+  .toolbar-center { order: 3; }
+  .block-dropdown, .clean-select-xs { max-width: 100%; }
+  .mode-switch-group { flex-wrap: wrap; }
+  .local-status-pill { display: inline-flex !important; }
+  .seat-cell, .seat-spacer { width: 46px; min-width: 46px; height: 44px; }
+  .seat-owner { font-size: 10px; max-width: 42px; }
+  .mode-btn, .view-tab, .icon-btn, .icon-btn-ghost, .btn, .menu-item { min-height: 44px; }
+  .more-actions-menu { max-height: 65dvh; overflow-y: auto; max-width: calc(100vw - 24px); }
+  .main-layout { min-height: 0; }
+  .canvas-wrapper { width: auto !important; }
+}
+
+.seat-cell.unloaded { opacity: 1; color: #475569; border-color: #64748b; }
+.seat-cell.unloaded .seat-owner { color: #475569; font-size: 10px; }
+.seat-cell.has-ticket-available .seat-owner { color: #047857; }
