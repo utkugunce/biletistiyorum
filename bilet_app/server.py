@@ -12,6 +12,7 @@ import secrets
 import shutil
 import zipfile
 from datetime import datetime
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import quote
@@ -743,7 +744,7 @@ async def admin_auth_middleware(request: Request, call_next):
     # - Admin auth APIs: /api/auth/login, /api/auth/check
     # - CORS OPTIONS requests
     if (
-        path in ("/", "/index.html", "/favicon.ico", "/manifest.json", "/sw.js")
+        path in ("/", "/index.html", "/favicon.ico", "/manifest.json", "/sw.js", "/api/status")
         or path.startswith("/static")
         or path.startswith("/assets")
         or path.startswith("/icons")
@@ -801,6 +802,24 @@ def api_auth_login(payload: LoginPayload, response: Response):
         return {"success": True, "token": token, "message": "Giriş başarılı."}
     else:
         raise HTTPException(status_code=401, detail="Hatalı şifre! Lütfen tekrar deneyiniz.")
+
+
+@app.get("/api/status")
+def api_status():
+    folder_str = str(state_mgr.active_folder.resolve()) if getattr(state_mgr, "active_folder", None) else ""
+    active_title = "Zeren Spor - Kuzeyboru"
+    try:
+        active_title = state_mgr.active_folder.name if state_mgr.active_folder else active_title
+    except Exception:
+        pass
+    return {
+        "status": "online",
+        "service": "zeren-local-daemon",
+        "active_folder": folder_str,
+        "active_match_name": active_title,
+        "version": "2.0",
+        "ts": time.time()
+    }
 
 
 @app.get("/api/auth/check")

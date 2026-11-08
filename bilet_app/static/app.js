@@ -1,3 +1,42 @@
+// T10: Yerel companion daemon durum takibi
+let isLocalServiceOnline = false;
+
+async function checkLocalCompanionStatus() {
+  const badge = document.getElementById("localServiceStatusBadge");
+  try {
+    const res = await fetch("http://127.0.0.1:8765/api/status", { cache: "no-store", signal: AbortSignal.timeout(2000) });
+    if (res.ok) {
+      isLocalServiceOnline = true;
+      if (badge) {
+        badge.className = "local-status-pill online";
+        badge.innerHTML = `<span class="status-dot"></span><span>Yerel Servis: Bağlı</span>`;
+        badge.title = "FastAPI yerel masaüstü servisi çalışıyor (port 8765). Klasörler doğrudan açılabilir.";
+      }
+      return;
+    }
+  } catch (e) {}
+
+  isLocalServiceOnline = false;
+  if (badge) {
+    badge.className = "local-status-pill offline";
+    badge.innerHTML = `<span class="status-dot"></span><span>Yerel Servis: Çevrimdışı</span>`;
+    badge.title = "FastAPI yerel servisi çevrimdışı. Klasör açma komutları bulut üzerinden kuyruklanır.";
+  }
+}
+
+// U11: Aktif vurgulanan grup çipi
+function updateHighlightChip() {
+  const chip = document.getElementById("activeHighlightChip");
+  const txt = document.getElementById("activeHighlightText");
+  if (!chip) return;
+  if (highlightedLabel) {
+    chip.classList.remove("hidden");
+    if (txt) txt.textContent = (highlightedLabel === "__UNASSIGNED__" || highlightedLabel.includes("Bo")) ? "Boşta" : highlightedLabel;
+  } else {
+    chip.classList.add("hidden");
+  }
+}
+
 // =========================================================
 // ZEREN SPOR — BAŞKENT VOLEYBOL SALONU BİLET DAĞITIM VE TAKİP
 // Temiz, Hızlı ve Kırpılmasız Ön Yüz (Frontend) Mantığı
@@ -66,6 +105,8 @@ document.addEventListener("DOMContentLoaded", () => {
   bindAuthEvents();
   checkAuthAndInit();
   initLiveSync();
+  checkLocalCompanionStatus();
+  setInterval(checkLocalCompanionStatus, 10000);
 });
 
 function initLiveSync() {
@@ -574,6 +615,7 @@ function renderBlockLegend(bInfo) {
           highlightedLabel = targetLbl;
           selectSeatsByGroupInCurrentBlock(item.label === "Boşta" ? "" : item.label);
         }
+        updateHighlightChip();
         renderSeatingStage();
         updateSelectionBar();
       });
@@ -599,6 +641,7 @@ function onSeatMouseDown(e, rNum, seatNum, seatId) {
   // Herhangi bir koltuğa tıklandığında soluklaştırma (grup karartma) modundan çık
   if (highlightedLabel) {
     highlightedLabel = null;
+  updateHighlightChip();
   }
 
   if (currentMode === "shift") {
@@ -1200,15 +1243,19 @@ function renderExcelPanel() {
     card.innerHTML = `
       <div class="excel-card-top">
         <div class="excel-card-person-info">
-          <div style="display:flex; align-items:center; gap:6px;">
+          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+            <span class="req-id-badge">${escapeHtml(r.request_id || "ZS-000")}</span>
             <span class="excel-card-name">${escapeHtml(r.person)}</span>
             ${isPortal ? `<span class="portal-source-badge"><i class="ph ph-globe"></i> PORTAL</span>` : ""}
+          </div>
+          <div class="excel-card-metrics-line">
+            <strong>${r.requested_count}</strong> istendi · <strong style="color:${r.assigned_count > 0 ? '#059669' : '#64748b'}">${r.assigned_count}</strong> ayrıldı · <strong style="color:${Math.max(0, r.requested_count - r.assigned_count) > 0 ? '#d97706' : '#059669'}">${Math.max(0, r.requested_count - r.assigned_count)}</strong> eksik
           </div>
           ${r.description ? `<span class="excel-card-sub">${escapeHtml(r.description)}</span>` : ""}
           ${r.phone ? `<span style="font-size:11px; color:#7e22ce; font-weight:700; margin-top:2px;"><i class="ph ph-phone"></i> ${escapeHtml(r.phone)}</span>` : ""}
         </div>
         <div style="display:flex; align-items:center; gap:5px;">
-          <span class="excel-block-badge">${escapeHtml(r.target_block || "Blok Yok")}</span>
+          <span class="excel-block-badge">${escapeHtml(r.target_block || "121")} Blok</span>
         </div>
       </div>
 
@@ -1526,6 +1573,54 @@ function copyGroupSummaryText(g) {
 // 7. EVENT BAĞLANTILARI
 // ---------------------------------------------------------
 function bindUIEvents() {
+  // Diğer İşlemler Dropdown Menüsü (U02)
+  const btnMore = document.getElementById("btnMoreActions");
+  const menuMore = document.getElementById("moreActionsMenu");
+  if (btnMore && menuMore) {
+    btnMore.addEventListener("click", (e) => {
+      e.stopPropagation();
+      menuMore.classList.toggle("hidden");
+    });
+    document.addEventListener("click", (e) => {
+      if (!menuMore.contains(e.target) && e.target !== btnMore) {
+        menuMore.classList.add("hidden");
+      }
+    });
+  }
+
+  // Vurgulamayı Temizleme Butonu (U11)
+  const btnClearHi = document.getElementById("btnClearHighlight");
+  if (btnClearHi) {
+    btnClearHi.addEventListener("click", () => {
+      highlightedLabel = null;
+      selectedSeats.clear();
+      updateHighlightChip();
+      renderSeatingStage();
+      updateSelectionBar();
+    });
+  }
+
+  // Klavye Escape: Tüm seçim ve grup karartmasını temizle (U04, U11)
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      clearAllFocusAndSelection();
+      updateHighlightChip();
+      if (menuMore) menuMore.classList.add("hidden");
+    }
+  });
+
+  // Sahne boşluğuna tıklayınca vurguyu ve seçimi sıfırla (U11)
+  const seatingStage = document.getElementById("seatingStage");
+  if (seatingStage) {
+    seatingStage.addEventListener("click", (e) => {
+      if (e.target.closest(".seat-cell") || e.target.closest("button") || e.target.closest(".legend-badge") || e.target.closest("select")) return;
+      if (highlightedLabel || selectedSeats.size > 0) {
+        clearAllFocusAndSelection();
+        updateHighlightChip();
+      }
+    });
+  }
+
   document.getElementById("tabBtnSeating").addEventListener("click", () => switchMainView("seating"));
   document.getElementById("tabBtnArena").addEventListener("click", () => switchMainView("arena"));
   document.getElementById("btnOpenArenaFromBar").addEventListener("click", () => switchMainView("arena"));
@@ -2618,8 +2713,9 @@ async function setRecipientSentStatus(reqId, person, sent) {
       body: JSON.stringify({ request_id: reqId, person: person, sent: sent }),
     });
     if (excelData && Array.isArray(excelData.requests)) {
-      excelData.requests.forEach(r => {
-        if (r.request_id === reqId || r.person === person) {
+      excelData.requests.forEach((r) => {
+        // T07: Kesin request_id eşleşmesi (aynı kişinin diğer taleplerini etkileme)
+        if (r.request_id === reqId) {
           r.whatsapp_sent = sent;
         }
       });
@@ -2668,10 +2764,8 @@ async function handleDispatchSendWhatsApp(r, cardEl) {
 
       if (files.length > 0 && navigator.canShare({ files })) {
         await navigator.share({ files: files });
-        await setRecipientSentStatus(r.id, r.person, true);
-        r.whatsapp_sent = true;
         renderDispatchRecipients();
-        showToast(`✅ ${r.person} için ${files.length} tekil bilet paylaşıldı.`);
+  showToast(`📱 ${r.person} için WhatsApp ve bilet klasörü açıldı. Biletleri ilettikten sonra "Gönderildi" butonuna basınız.`);
         return;
       }
     } catch (err) {
@@ -2713,11 +2807,8 @@ async function handleDispatchSendWhatsApp(r, cardEl) {
     document.body.removeChild(waLink);
   }
 
-  await setRecipientSentStatus(r.id, r.person, true);
-  r.whatsapp_sent = true;
   renderDispatchRecipients();
-
-  showToast(`✅ ${r.person} için ${dlCount} bilet klasöre ayrıldı ve WhatsApp açıldı. Klasördeki biletleri sohbete sürükleyin! 📎`);
+  showToast(`📱 ${r.person} için WhatsApp ve bilet klasörü açıldı. Biletleri ilettikten sonra "Gönderildi" butonuna basınız.`);
 }
 
 function handleQuickSendWhatsAppForRequest(req) {

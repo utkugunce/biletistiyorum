@@ -5,7 +5,41 @@ import crypto from "crypto";
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://kgchdufcqgyhycgyydhf.supabase.co";
 const SUPABASE_KEY = process.env.SUPABASE_KEY || "sb_publishable_aT8iwPOs6AOg5HfaAQpGhg_TlvHwG2T";
 const DEFAULT_ADMIN_PWD = process.env.ZEREN_ADMIN_PASSWORD || "zeren2026";
-const TOKEN_SECRET = "zeren_spor_2026_secret_key_v1";
+const TOKEN_SECRET = process.env.ZEREN_ADMIN_SECRET || process.env.TOKEN_SECRET || "zeren_spor_2026_secret_key_v1";
+
+const failedLogins = new Map(); // ip -> { count, firstFailTime }
+function isRateLimited(ip) {
+  const now = Date.now();
+  const entry = failedLogins.get(ip);
+  if (!entry) return false;
+  if (now - entry.firstFailTime > 60000) {
+    failedLogins.delete(ip);
+    return false;
+  }
+  return entry.count >= 5;
+}
+function recordFailedLogin(ip) {
+  const now = Date.now();
+  const entry = failedLogins.get(ip);
+  if (!entry || now - entry.firstFailTime > 60000) {
+    failedLogins.set(ip, { count: 1, firstFailTime: now });
+  } else {
+    entry.count += 1;
+  }
+}
+function clearFailedLogin(ip) {
+  failedLogins.delete(ip);
+}
+
+function safeTokenCompare(a, b) {
+  if (typeof a !== "string" || typeof b !== "string") return false;
+  if (!a || !b) return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  if (bufA.length !== bufB.length) return false;
+  return crypto.timingSafeEqual(bufA, bufB);
+}
+
 
 const PALETTE = [
   "#7E22CE", "#2563EB", "#059669", "#D97706", "#DC2626",
@@ -89,6 +123,8 @@ function lookupPhone(person, phonebook) {
   return "";
 }
 
+let _lastKnownSysState = null;
+
 async function loadSystemState() {
   try {
     const res = await fetch(`${SUPABASE_URL}/rest/v1/portal_requests?id=eq.__SYSTEM_STATE__&select=*`, {
@@ -97,19 +133,27 @@ async function loadSystemState() {
     if (res.ok) {
       const rows = await res.json();
       if (Array.isArray(rows) && rows.length > 0 && rows[0].assigned_seats && typeof rows[0].assigned_seats === "object" && !Array.isArray(rows[0].assigned_seats)) {
+        _lastKnownSysState = rows[0].assigned_seats;
         return rows[0].assigned_seats;
       }
     }
-  } catch (e) {}
+  } catch (e) {
+    console.error("loadSystemState fetch error:", e);
+  }
+  if (_lastKnownSysState) {
+    return _lastKnownSysState;
+  }
   return {
     virtual_assignments: {},
     admin_password: DEFAULT_ADMIN_PWD,
     custom_phones: {},
-    sent_map: {}
+    sent_map: {},
+    version: 1
   };
 }
 
 async function saveSystemState(sysState) {
+  sysState.version = (sysState.version || 0) + 1;
   const row = {
     id: "__SYSTEM_STATE__",
     match_name: "__SYSTEM__",
@@ -117,11 +161,17 @@ async function saveSystemState(sysState) {
     status: "system",
     assigned_seats: sysState
   };
-  await fetch(`${SUPABASE_URL}/rest/v1/portal_requests`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/portal_requests`, {
     method: "POST",
     headers: sbHeaders({ Prefer: "resolution=merge-duplicates,return=minimal" }),
     body: JSON.stringify(row)
   });
+  if (!res.ok) {
+    const errTxt = await res.text();
+    console.error("saveSystemState error:", res.status, errTxt);
+    throw new Error(`Sistem durumu Supabase'e kaydedilemedi (${res.status}): ${errTxt}`);
+  }
+  _lastKnownSysState = sysState;
 }
 
 async function loadPortalRequests() {
@@ -384,16 +434,27 @@ export default async function handler(req, res) {
   const activePwd = sysState.admin_password || DEFAULT_ADMIN_PWD;
   const validToken = makeAdminToken(activePwd);
 
+  // Client IP for rate-limiting
+  const clientIp = (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "local").split(",")[0].trim();
+  const isHttps = req.headers["x-forwarded-proto"] === "https" || req.headers["x-forwarded-ssl"] === "on";
+
   // 1. AUTH ENDPOINTS
   if (pathname === "/api/auth/login" && req.method === "POST") {
+    if (isRateLimited(clientIp)) {
+      return res.status(429).json({
+        success: false,
+        detail: "Çok fazla hatalı giriş denemesi yapıldı. Lütfen 1 dakika bekleyiniz."
+      });
+    }
+
     const pwd = String(body.password || "").trim();
     if (pwd === activePwd) {
-      res.setHeader(
-        "Set-Cookie",
-        `zeren_admin_token=${validToken}; Path=/; SameSite=Lax; Max-Age=31536000`
-      );
+      clearFailedLogin(clientIp);
+      const cookieFlags = `Path=/; SameSite=Lax; Max-Age=31536000; HttpOnly${isHttps ? "; Secure" : ""}`;
+      res.setHeader("Set-Cookie", `zeren_admin_token=${validToken}; ${cookieFlags}`);
       return res.status(200).json({ success: true, authenticated: true, token: validToken, message: "Giriş başarılı." });
     }
+    recordFailedLogin(clientIp);
     return res.status(401).json({ success: false, detail: "Hatalı şifre! Lütfen tekrar deneyiniz." });
   }
 
@@ -405,14 +466,15 @@ export default async function handler(req, res) {
   if (!reqToken && req.headers["x-admin-token"]) {
     reqToken = String(req.headers["x-admin-token"]).trim();
   }
-  const isAuthenticated = reqToken === validToken;
+  const isAuthenticated = safeTokenCompare(reqToken, validToken);
 
   if (pathname === "/api/auth/check") {
     return res.status(200).json({ success: isAuthenticated, authenticated: isAuthenticated });
   }
 
   if (pathname === "/api/auth/logout" && req.method === "POST") {
-    res.setHeader("Set-Cookie", "zeren_admin_token=; Path=/; HttpOnly; Max-Age=0");
+    const cookieFlags = `Path=/; SameSite=Lax; Max-Age=0; HttpOnly${isHttps ? "; Secure" : ""}`;
+    res.setHeader("Set-Cookie", `zeren_admin_token=; ${cookieFlags}`);
     return res.status(200).json({ success: true, authenticated: false, message: "Çıkış yapıldı." });
   }
 
@@ -432,10 +494,8 @@ export default async function handler(req, res) {
     sysState.admin_password = newPwd;
     await saveSystemState(sysState);
     const newToken = makeAdminToken(newPwd);
-    res.setHeader(
-      "Set-Cookie",
-      `zeren_admin_token=${newToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=604800`
-    );
+    const cookieFlags = `Path=/; SameSite=Lax; Max-Age=31536000; HttpOnly${isHttps ? "; Secure" : ""}`;
+    res.setHeader("Set-Cookie", `zeren_admin_token=${newToken}; ${cookieFlags}`);
     return res.status(200).json({ success: true, ok: true, token: newToken, message: "Şifre güncellendi." });
   }
 
@@ -455,6 +515,24 @@ export default async function handler(req, res) {
     const sub = String(body.subgroup || "").trim();
     const reqId = String(body.request_id || "").trim();
     sysState.virtual_assignments = sysState.virtual_assignments || {};
+
+    // T06: Check seat collision against other groups
+    if (grp) {
+      const conflicts = [];
+      for (const s of seats) {
+        const key = `${s.block}:${s.row}-${s.seat}`;
+        const existing = sysState.virtual_assignments[key];
+        if (existing && existing.group && normalizeName(existing.group) !== normalizeName(grp)) {
+          conflicts.push(`${s.block} Sıra ${s.row} Koltuk ${s.seat} (Mevcut: ${existing.group})`);
+        }
+      }
+      if (conflicts.length > 0) {
+        return res.status(409).json({
+          error: `Koltuk çakışması tespit edildi! Bu koltuklar başka bir personele atanmış: ${conflicts.join(", ")}`,
+          conflicts
+        });
+      }
+    }
 
     const newlyAssignedByBlock = {};
     const unassignedSeats = new Set();
@@ -656,7 +734,8 @@ export default async function handler(req, res) {
       const isPart = asgCount > 0 && !isComp;
 
       const sentMap = sysState.sent_map || {};
-      const isSent = Boolean(sentMap[pr.id] || (isComp && sentMap[person]));
+      // T07: Strict request_id isolation - do NOT leak sent status to other requests of the same person
+      const isSent = Boolean(sentMap[pr.id]);
       return {
         request_id: pr.id,
         source: "portal",
@@ -746,12 +825,32 @@ export default async function handler(req, res) {
     }
 
     sysState.virtual_assignments = sysState.virtual_assignments || {};
+    const assignGroup = String(body.group || "").trim();
+
+    // T06: Check seat collision in auto-assignment
+    if (assignGroup && pickedSeats.length > 0) {
+      const conflicts = [];
+      for (const s of pickedSeats) {
+        const key = `${s.block}:${s.row}-${s.seat}`;
+        const existing = sysState.virtual_assignments[key];
+        if (existing && existing.group && normalizeName(existing.group) !== normalizeName(assignGroup)) {
+          conflicts.push(`${s.block} Sıra ${s.row} Koltuk ${s.seat} (Mevcut: ${existing.group})`);
+        }
+      }
+      if (conflicts.length > 0) {
+        return res.status(409).json({
+          detail: `Koltuk çakışması tespit edildi: ${conflicts.join(", ")}`,
+          conflicts
+        });
+      }
+    }
+
     const newSids = [];
     for (const s of pickedSeats) {
       const sid = `${s.row}-${s.seat}`;
       newSids.push(sid);
       sysState.virtual_assignments[`${s.block}:${sid}`] = {
-        group: String(body.group || "").trim(),
+        group: assignGroup,
         subgroup: String(body.subgroup || "").trim(),
         request_id: body.request_id || undefined
       };
@@ -934,21 +1033,28 @@ export default async function handler(req, res) {
   // 10. POST /api/dispatch/mark-sent
   if (pathname === "/api/dispatch/mark-sent" && req.method === "POST") {
     sysState.sent_map = sysState.sent_map || {};
-    const key = body.request_id || body.recipient_id || body.person;
-    if (key) {
-      sysState.sent_map[key] = Boolean(body.sent);
+    const reqId = String(body.request_id || body.recipient_id || "").trim();
+    if (reqId) {
+      sysState.sent_map[reqId] = Boolean(body.sent);
       if (body.sent) {
         sysState.explorer_cmd = {
           id: Date.now() + "_" + Math.random().toString(36).slice(2, 7),
           group: (body.person || "").trim(),
           subgroup: "",
-          request_id: (body.request_id || "").trim(),
+          request_id: reqId,
           ts: Date.now()
         };
       }
       await saveSystemState(sysState);
+      return res.status(200).json({ success: true, ok: true, request_id: reqId, sent: Boolean(body.sent) });
     }
-    return res.status(200).json({ success: true, ok: true });
+    const person = String(body.person || "").trim();
+    if (person) {
+      sysState.sent_map[person] = Boolean(body.sent);
+      await saveSystemState(sysState);
+      return res.status(200).json({ success: true, ok: true, person, sent: Boolean(body.sent) });
+    }
+    return res.status(400).json({ error: "Talep kimliği (request_id) zorunludur." });
   }
 
   // 11. POST /api/dispatch/save-phone
@@ -988,16 +1094,19 @@ export default async function handler(req, res) {
   }
 
   // 12. DELETE or POST /api/portal/request/{id}/delete
-  if (pathname.startsWith("/api/portal/request/")) {
+  if (pathname.startsWith("/api/portal/request/") && (req.method === "DELETE" || (req.method === "POST" && pathname.endsWith("/delete")))) {
     const parts = pathname.split("/").filter(Boolean);
     const reqId = decodeURIComponent(parts[3] || "");
-    if (reqId) {
+    if (reqId && reqId !== "__SYSTEM_STATE__") {
       const portalReqs = await loadPortalRequests();
       const target = portalReqs.find((r) => r.id === reqId);
-      await fetch(`${SUPABASE_URL}/rest/v1/portal_requests?id=eq.${encodeURIComponent(reqId)}`, {
+      const delRes = await fetch(`${SUPABASE_URL}/rest/v1/portal_requests?id=eq.${encodeURIComponent(reqId)}`, {
         method: "DELETE",
         headers: sbHeaders()
       });
+      if (!delRes.ok) {
+        return res.status(500).json({ error: "Talep veritabanından silinemedi." });
+      }
       if (target && sysState.virtual_assignments) {
         let bId = String(target.assigned_block || target.target_block || "102").trim();
         if (bId.toLowerCase().includes("saha")) bId = "SAHA";
@@ -1028,5 +1137,16 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true, message: "Tüm talepler ve sanal atamalar temizlendi." });
   }
 
-  return res.status(200).json({ ok: true });
+  // 14. GET /api/status
+  if (pathname === "/api/status" && req.method === "GET") {
+    return res.status(200).json({
+      status: "online",
+      ok: true,
+      active_match_name: "Zeren Spor - Kuzeyboru",
+      version: "2.0",
+      ts: Date.now()
+    });
+  }
+
+  return res.status(404).json({ error: "Endpoint bulunamadı.", path: pathname });
 }

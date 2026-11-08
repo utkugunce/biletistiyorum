@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
   <title>Zeren Spor — Bilet Dağıtım ve Takip Sistemi</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -76,7 +76,8 @@
     </div>
   </div>
   <!-- ========================================================= -->
-  <!-- 1. ÜST NAVİGASYON (TEK VE TEMİZ SATIR)                   -->
+    <!-- ========================================================= -->
+  <!-- 1. ÜST NAVİGASYON (RESPONSIVE TOPBAR)                     -->
   <!-- ========================================================= -->
   <header class="topbar">
     <!-- Sol: Logo + Maç Seçimi + Yeni Maç -->
@@ -95,20 +96,6 @@
         <i class="ph-bold ph-plus"></i>
         <span>Yeni Maç</span>
       </button>
-
-      <button class="btn btn-secondary btn-xs" id="btnUploadTicketsModal" title="Biletinial'dan indirilen PDF biletleri veya ZIP arşivini aktif maça yükle">
-        <i class="ph-bold ph-upload-simple"></i>
-        <span>Bilet Yükle</span>
-      </button>
-
-      <div class="folder-quick-actions">
-        <button class="icon-btn-ghost" id="btnBrowseFolder" title="Başka bir PDF klasörü seç">
-          <i class="ph ph-folder-open"></i>
-        </button>
-        <button class="icon-btn-ghost" id="btnOpenRootExplorer" title="Maç klasörünü Windows Gezgini'nde aç">
-          <i class="ph ph-arrow-square-out"></i>
-        </button>
-      </div>
     </div>
 
     <!-- Orta: Görünüm Sekmeleri (Koltuk Planı vs Salon Haritası) -->
@@ -130,136 +117,126 @@
       </div>
     </div>
 
-    <!-- Sağ: Maç Özeti + Temel Butonlar -->
+    <!-- Sağ: Servis Durumu + WhatsApp + Talepler + Diğer İşlemler Dropdown (U02, T10) -->
     <div class="topbar-right">
-      <div class="stats-badge-group">
-        <span class="stat-chip" title="Bu maçtaki toplam bilet/koltuk">
-          <strong id="statTotalPdf">0</strong> Bilet
-        </span>
-        <span class="stat-chip stat-chip-assigned" title="Kişilere dağıtılan bilet sayısı">
-          <strong id="statAssignedPdf">0</strong> Dağıtılan
-        </span>
-        <span class="stat-chip stat-chip-available" title="Boşta veya 'diğer' klasöründeki biletler">
-          <strong id="statAvailablePdf">0</strong> Boş/Diğer
-        </span>
+      <div id="localServiceStatusBadge" class="local-status-pill online" title="Windows Yerel PDF Servisi Durumu">
+        <span class="status-dot"></span>
+        <span class="status-text">Yerel Servis: Bağlı</span>
       </div>
 
-      <div class="action-btn-group">
-        <button class="icon-btn" id="btnUndo" disabled title="Son İşlemi Geri Al (Ctrl+Z)">
-          <i class="ph ph-arrow-u-up-left"></i>
-        </button>
-        <button class="icon-btn" id="btnRedo" disabled title="İleri Al (Ctrl+Y)">
-          <i class="ph ph-arrow-u-up-right"></i>
-        </button>
-        <button class="icon-btn" id="btnRefresh" title="Klasörü Yeniden Tara">
-          <i class="ph ph-arrows-clockwise"></i>
-        </button>
+      <button class="btn btn-whatsapp btn-xs" id="btnOpenDispatchModal" title="WhatsApp Bilet Dağıtım Merkezi">
+        <i class="ph-bold ph-whatsapp-logo"></i>
+        <span class="btn-text-desktop">WhatsApp Dağıtım</span>
+        <span class="dispatch-badge-count" id="badgeDispatchPending">0</span>
+      </button>
 
-        <button class="btn btn-whatsapp btn-xs" id="btnOpenDispatchModal" title="WhatsApp Bilet Dağıtım Merkezi">
-          <i class="ph-bold ph-whatsapp-logo"></i>
-          <span class="btn-text-desktop">WhatsApp Dağıtım</span>
-          <span class="dispatch-badge-count" id="badgeDispatchPending">0</span>
-        </button>
+      <button class="icon-btn btn-toggle-sidebar" id="btnToggleSidebar" title="Talepler & Dağılım Panelini Aç / Kapat">
+        <i class="ph-bold ph-sidebar-simple"></i>
+      </button>
 
-        <button class="btn btn-secondary btn-xs" id="btnDownloadBlockPng" title="Bu bloğun planını PNG olarak indir">
-          <i class="ph ph-image"></i>
-          <span class="btn-text-desktop">PNG</span>
+      <!-- Diğer İşlemler Açılır Menüsü (U02) -->
+      <div class="more-actions-dropdown-wrap">
+        <button type="button" class="btn btn-outline btn-xs" id="btnMoreActions" title="Tüm Araçlar ve Diğer İşlemler">
+          <i class="ph-bold ph-dots-three-vertical"></i>
+          <span>İşlemler ▾</span>
         </button>
+        <div class="more-actions-menu hidden" id="moreActionsMenu">
+          <div class="menu-group-header">Bilet ve Klasör</div>
+          <button type="button" class="menu-item" id="btnUploadTicketsModal" title="Biletinial PDF/ZIP yükle">
+            <i class="ph ph-upload-simple"></i>
+            <span>Bilet Yükle (PDF / ZIP)</span>
+          </button>
+          <button type="button" class="menu-item" id="btnBrowseFolder" title="Başka bir PDF klasörü seç">
+            <i class="ph ph-folder-open"></i>
+            <span>Klasör Seç...</span>
+          </button>
+          <button type="button" class="menu-item" id="btnOpenRootExplorer" title="Maç klasörünü Windows Gezgini'nde aç">
+            <i class="ph ph-arrow-square-out"></i>
+            <span>Windows Gezgini'nde Aç</span>
+          </button>
+          <button type="button" class="menu-item" id="btnRefresh" title="Klasörü Yeniden Tara">
+            <i class="ph ph-arrows-clockwise"></i>
+            <span>Klasörü Yeniden Tara</span>
+          </button>
 
-        <button class="btn btn-secondary btn-xs" id="btnExportAllZip" title="Tüm biletleri ZIP olarak indir">
-          <i class="ph ph-download-simple"></i>
-          <span class="btn-text-desktop">ZIP</span>
-        </button>
+          <div class="menu-group-divider"></div>
+          <div class="menu-group-header">Dışa Aktarma</div>
+          <button type="button" class="menu-item" id="btnDownloadBlockPng" title="Bu bloğun planını PNG olarak indir">
+            <i class="ph ph-image"></i>
+            <span>Bu Bloğu PNG İndir</span>
+          </button>
+          <button type="button" class="menu-item" id="btnExportAllZip" title="Tüm biletleri ZIP olarak indir">
+            <i class="ph ph-download-simple"></i>
+            <span>Tüm Biletleri ZIP İndir</span>
+          </button>
 
-        <a href="https://biletistiyorum.vercel.app" target="_blank" class="btn btn-portal btn-xs" title="Kulüp Personeli Canlı Bilet Portalı (biletistiyorum.vercel.app)">
-          <i class="ph-bold ph-globe"></i>
-          <span class="btn-text-desktop">biletistiyorum.vercel.app ↗</span>
-        </a>
+          <div class="menu-group-divider"></div>
+          <div class="menu-group-header">Düzen ve Geçmiş</div>
+          <button type="button" class="menu-item" id="btnUndo" disabled title="Son İşlemi Geri Al (Ctrl+Z)">
+            <i class="ph ph-arrow-u-up-left"></i>
+            <span>Geri Al (Ctrl+Z)</span>
+          </button>
+          <button type="button" class="menu-item" id="btnRedo" disabled title="İleri Al (Ctrl+Y)">
+            <i class="ph ph-arrow-u-up-right"></i>
+            <span>İleri Al (Ctrl+Y)</span>
+          </button>
 
-        <button class="icon-btn btn-toggle-sidebar" id="btnToggleSidebar" title="Talepler & Dağılım Panelini Aç / Kapat">
-          <i class="ph-bold ph-sidebar-simple"></i>
-        </button>
-
-        <button class="icon-btn" id="btnOpenChangePwdModal" title="Yönetici Şifresini Değiştir">
-          <i class="ph-bold ph-key"></i>
-        </button>
-
-        <button class="icon-btn btn-admin-logout" id="btnLogoutAdmin" title="Yönetici Oturumunu Kapat">
-          <i class="ph-bold ph-sign-out"></i>
-        </button>
+          <div class="menu-group-divider"></div>
+          <div class="menu-group-header">Hesap ve Portala Geçiş</div>
+          <button type="button" class="menu-item" id="btnOpenChangePwdModal" title="Yönetici Şifresini Değiştir">
+            <i class="ph ph-key"></i>
+            <span>Şifre Değiştir</span>
+          </button>
+          <a href="https://biletistiyorum.vercel.app" target="_blank" class="menu-item">
+            <i class="ph ph-globe"></i>
+            <span>Personel Portalı ↗</span>
+          </a>
+          <button type="button" class="menu-item menu-item-danger" id="btnLogoutAdmin" title="Yönetici Oturumunu Kapat">
+            <i class="ph ph-sign-out"></i>
+            <span>Çıkış Yap</span>
+          </button>
+        </div>
       </div>
     </div>
   </header>
 
-  <!-- 2. BLOK VE KONTROL MENÜSÜ (TAM GENİŞLİK - SONUNA KADAR UZANAN 2. SATIR) -->
+  <!-- ========================================================= -->
+  <!-- 2. BLOK VE KONTROL MENÜSÜ (RESPONSIVE TOOLBAR)            -->
+  <!-- ========================================================= -->
   <div class="block-toolbar">
-        <div class="toolbar-left">
-          <span class="toolbar-label">Blok:</span>
-          <select id="selectQuickBlock" class="block-dropdown" title="30 Blok Arasından Seç"></select>
-          <div id="activeBlocksPills" class="active-block-pills"></div>
-          <button class="btn btn-outline btn-xs" id="btnOpenArenaFromBar" title="Görsel salon haritasını aç">
-            <i class="ph ph-stadium"></i>
-            <span>Salon Haritası</span>
-          </button>
-        </div>
+    <div class="toolbar-left">
+      <span class="toolbar-label">Blok:</span>
+      <select id="selectQuickBlock" class="block-dropdown" title="30 Blok Arasından Seç"></select>
+      <div id="activeBlocksPills" class="active-block-pills"></div>
+      <button class="btn btn-outline btn-xs" id="btnOpenArenaFromBar" title="Görsel salon haritasını aç">
+        <i class="ph ph-stadium"></i>
+        <span>Salon Haritası</span>
+      </button>
+    </div>
 
-        <div class="toolbar-center">
-          <div class="block-info-pill">
-            <span class="block-pill-id" id="currentBlockTitle">121 BLOK</span>
-            <span class="block-pill-details" id="currentBlockMetrics">Kapasite: 160 · Dolu: 130 · Boş: 30</span>
-          </div>
-        </div>
-
-        <div class="toolbar-right">
-          <div class="mode-switch-group">
-            <button class="mode-btn active" data-mode="select" id="modeBtnSelect" title="Tıklayarak veya sürükleyerek çoklu koltuk seçin">
-              Seçim
-            </button>
-            <button class="mode-btn" data-mode="shift" id="modeBtnShift" title="Seçili koltukları başka koltuklara kaydırın veya takas edin">
-              Kaydır / Takas
-            </button>
-          </div>
-
-          <select id="selectColorMode" class="clean-select-xs" title="Renklendirme Modu">
-            <option value="groups">Grup Renkleri</option>
-            <option value="classic">Klasik (Kırmızı / Turuncu)</option>
-          </select>
-
-          <button class="btn btn-outline btn-xs" id="btnPreviewOrigBlock" title="Bu bloğun resmi Biletinial şemasını göster">
-            <i class="ph ph-eye"></i>
-            <span>Orijinal Şema</span>
-          </button>
-        </div>
+    <div class="toolbar-center">
+      <div class="block-info-pill">
+        <span class="block-pill-id" id="currentBlockTitle">121 BLOK</span>
+        <span class="block-pill-details" id="currentBlockMetrics">Kapasite: 160 · Dolu: 130 · Boş: 30</span>
       </div>
+      <div id="activeHighlightChip" class="active-highlight-chip hidden">
+        <span>Vurgulanan: </span>
+        <strong id="activeHighlightText"></strong>
+        <button type="button" id="btnClearHighlight" title="Vurgulamayı Kaldır">✕</button>
+      </div>
+    </div>
 
-  <!-- ========================================================= -->
-  <!-- 2. ANA ÇALIŞMA ALANI (KOLTUK PLANI + SAĞ PANEL)          -->
-  <!-- ========================================================= -->
-  <div class="main-layout">
-    <!-- GÖRÜNÜM 1: KOLTUK PLANI SAHNESİ -->
-    <main class="seating-view" id="viewSeating">
-      <!-- Blok ve Kontrol Araç Çubuğu -->
-      
-
-      <!-- Kaydırma Modu Bilgi Bandı -->
-      <div class="shift-banner hidden" id="modeInfoBanner"></div>
-
-      <!-- KOLTUK IZGARASI ALANI (KAYDIRMA BUG'I DÜZELTİLMİŞ) -->
-      <div class="canvas-wrapper" id="seatingStageWrapper">
-        <div id="courtIndicatorTop" class="court-direction-bar court-bar-top hidden">
-          ▲ SAHA YÖNÜ (VOLEYBOL KORTU) ▲
-        </div>
-
-        <div class="canvas-middle-row">
-          <div id="courtIndicatorLeft" class="court-direction-bar court-bar-side hidden">
-            ◄ SAHA
-          </div>
-
-          <div class="seating-scroll-container" id="seatingGridScroll">
-            <div class="seating-sheet">
-              <div id="seatingGridContainer" class="seating-grid-table"></div>
-            </div>
-          </div>
+    <div class="toolbar-right">
+      <div class="mode-switch-group">
+        <button class="mode-btn active" data-mode="select" id="modeBtnSelect" title="Tıklayarak veya sürükleyerek çoklu koltuk seçin">
+          Seçim
+        </button>
+        <button class="mode-btn" data-mode="shift" id="modeBtnShift" title="Seçili koltukları başka koltuklara kaydırın veya takas edin">
+          Kaydır / Takas
+        </button>
+      </div>
+    </div>
+  </div>
 
           <div id="courtIndicatorRight" class="court-direction-bar court-bar-side hidden">
             SAHA ►

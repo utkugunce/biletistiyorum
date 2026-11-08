@@ -50,6 +50,10 @@
           <i class="ph-bold ph-stadium"></i>
           <span>Salon Rehberi</span>
         </button>
+        <button class="nav-tab-btn" id="btnNavMyRequests" data-tab="tab-my-requests">
+          <i class="ph-bold ph-magnifying-glass"></i>
+          <span>Taleplerimi Takip Et</span>
+        </button>
       </nav>
 
       <div class="header-right">
@@ -248,6 +252,10 @@
                     <option value="">Farketmez (Sistem Uygun Yeri Belirlesin)</option>
                   </select>
                 </div>
+                <p style="font-size:12px; color:#6b7280; margin-top:6px; display:flex; align-items:center; gap:5px;">
+                  <i class="ph ph-info" style="color:#7e22ce;"></i>
+                  <span>Tercihiniz dikkate alınır; nihai yerleşim salon müsaitliğine göre kulüp yönetimi tarafından onaylanır.</span>
+                </p>
               </div>
             </div>
 
@@ -348,6 +356,45 @@
       </div>
     </section>
 
+    <!-- SEKME 3: TALEPLERİMİ TAKİP ET (U10) -->
+    <section class="portal-tab-content hidden" id="tab-my-requests">
+      <div class="form-container-card" style="max-width: 680px; margin: 0 auto; width: 100%;">
+        <div class="section-badge-header" style="margin-bottom: 20px;">
+          <div class="header-icon-badge" style="background: #f3e8ff; color: #7e22ce; width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px;">
+            <i class="ph-bold ph-magnifying-glass"></i>
+          </div>
+          <div>
+            <h2 style="font-size: 18px; font-weight: 800; color: #1e1b4b;">Bilet Talebimi Takip Et</h2>
+            <p style="font-size: 13px; color: #64748b;">Takip kodunuzu (Örn: ZS-1234) veya kayıtlı telefon numaranızı girerek güncel durumunuzu öğrenebilirsiniz.</p>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 8px; margin-bottom: 20px;">
+          <div class="input-with-icon" style="flex: 1;">
+            <i class="ph ph-ticket"></i>
+            <input
+              type="text"
+              id="inputTrackQuery"
+              class="form-ctrl"
+              placeholder="ZS-XXXX takip kodu veya telefon numarası..."
+              autocomplete="off"
+            />
+          </div>
+          <button type="button" id="btnSearchMyRequests" class="btn-primary-portal" style="padding: 0 20px; white-space: nowrap; height: 46px; border-radius: 8px;">
+            <i class="ph-bold ph-magnifying-glass"></i>
+            <span>Sorgula</span>
+          </button>
+        </div>
+
+        <div id="trackResultsContainer" style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="text-align: center; padding: 30px 10px; color: #94a3b8; font-size: 13px;">
+            <i class="ph-bold ph-info" style="font-size: 28px; display: block; margin-bottom: 8px; color: #cbd5e1;"></i>
+            Talebinizin durumunu görmek için yukarıya takip kodunuzu yazıp <strong>Sorgula</strong> butonuna basınız.
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- ========================================================= -->
@@ -364,9 +411,14 @@
       </p>
 
       <div class="success-ticket-receipt">
-        <div class="receipt-row">
+        <div class="receipt-row" style="background:#f3e8ff; border-radius:8px; padding:10px 12px; margin-bottom:8px;">
           <span class="rc-label">Takip Kodu:</span>
-          <strong class="rc-val rc-code" id="receiptCode">ZEREN-2026-0001</strong>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <strong class="rc-val rc-code" id="receiptCode">ZS-0000</strong>
+            <button type="button" class="btn-copy-code" id="btnCopyReceiptCode" title="Kodu Kopyala" style="background:none; border:none; cursor:pointer; color:#7e22ce; font-size:16px; padding:2px 6px;">
+              <i class="ph-bold ph-copy" id="iconCopyCode"></i>
+            </button>
+          </div>
         </div>
         <div class="receipt-row">
           <span class="rc-label">Maç:</span>
@@ -377,15 +429,19 @@
           <span class="rc-val" id="receiptPerson">Seda Canlı</span>
         </div>
         <div class="receipt-row">
-          <span class="rc-label">Adet / Blok:</span>
+          <span class="rc-label">Adet / Tercih:</span>
           <span class="rc-val" id="receiptCountBlock">2 Adet · 121 Blok</span>
         </div>
       </div>
 
-      <div class="modal-actions-group">
-        <button class="btn-primary-portal" id="btnCloseSuccessModal" style="width: 100%; justify-content: center;">
-          <i class="ph-bold ph-check"></i>
-          <span>Tamam (Yeni Talep Gönder)</span>
+      <div class="modal-actions-group" style="display:flex; flex-direction:column; gap:8px; margin-top:16px;">
+        <button type="button" class="btn-primary-portal" id="btnTrackMyRequest" style="width: 100%; justify-content: center;">
+          <i class="ph-bold ph-magnifying-glass"></i>
+          <span>Talebimi Takip Et</span>
+        </button>
+        <button type="button" class="btn-secondary-portal" id="btnCloseSuccessModal" style="width: 100%; justify-content: center; background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:11px; border-radius:8px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px;">
+          <i class="ph-bold ph-plus-circle"></i>
+          <span>Yeni Bir Talep Oluştur</span>
         </button>
       </div>
     </div>

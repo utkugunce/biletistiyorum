@@ -16,27 +16,81 @@ function getHeaders(extra = {}) {
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, apikey, Authorization");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  const q = (req.query.q || "").trim().toLowerCase();
-
-  try {
-    const sbRes = await fetch(`${SUPABASE_URL}/rest/v1/portal_requests?id=neq.__SYSTEM_STATE__&select=*&order=created_at.desc`, {
-      headers: getHeaders()
-    });
-    if (sbRes.ok) {
-      const allReqs = await sbRes.json();
-      if (!q) return res.status(200).json(allReqs);
-      const filtered = allReqs.filter(
-        (r) =>
-          (r.person || "").toLowerCase().includes(q) ||
-          (r.id || "").toLowerCase() === q
-      );
-      return res.status(200).json(filtered);
-    }
-  } catch (e) {
-    // Fallback
+  if (req.method !== "GET") {
+    return res.status(405).json({ detail: "Method not allowed" });
   }
 
-  return res.status(200).json([]);
+  const rawQ = (req.query.q || "").trim();
+  if (!rawQ || rawQ.length < 4) {
+    return res.status(200).json([]);
+  }
+
+  const qLower = rawQ.toLowerCase();
+  const digitsOnly = rawQ.replace(/\D/g, "");
+
+  try {
+    const sbRes = await fetch(
+      `${SUPABASE_URL}/rest/v1/portal_requests?id=neq.__SYSTEM_STATE__&select=id,match_name,person,phone,requested_count,target_block,assigned_block,assigned_seats,status,whatsapp_sent,created_at&order=created_at.desc`,
+      { headers: getHeaders() }
+    );
+    if (!sbRes.ok) {
+      return res.status(500).json({ detail: "Veritabanı hatası." });
+    }
+
+    const allReqs = await sbRes.json();
+    if (!Array.isArray(allReqs)) {
+      return res.status(200).json([]);
+    }
+
+    const filtered = allReqs.filter((r) => {
+      const rId = String(r.id || "").toLowerCase();
+      // Match by exact or prefix ZS- request id
+      if (qLower.startsWith("zs-") && rId === qLower) {
+        return true;
+      }
+      if (rId === qLower) {
+        return true;
+      }
+      // Match by phone number (at least 7 matching digits to prevent broad collision)
+      if (digitsOnly.length >= 7) {
+        const rPhoneDigits = String(r.phone || "").replace(/\D/g, "");
+        if (rPhoneDigits && (rPhoneDigits.endsWith(digitsOnly) || digitsOnly.endsWith(rPhoneDigits))) {
+          return true;
+        }
+      }
+      return false;
+    });
+
+    // Data minimization: Return only sanitized tracking fields (do not leak private notes or full phone)
+    const sanitized = filtered.map((r) => {
+      const asg = Array.isArray(r.assigned_seats) ? r.assigned_seats : [];
+      const reqCount = parseInt(r.requested_count || 1, 10);
+      const isComp = asg.length >= reqCount && reqCount > 0;
+      const isPart = asg.length > 0 && !isComp;
+      const maskedPhone = r.phone ? r.phone.replace(/(\d{3})\d{4}(\d{2})/, "$1****$2") : "";
+
+      return {
+        id: r.id,
+        match_name: r.match_name,
+        person: r.person,
+        masked_phone: maskedPhone,
+        requested_count: reqCount,
+        assigned_count: asg.length,
+        target_block: r.target_block,
+        assigned_block: r.assigned_block,
+        assigned_seats: asg,
+        status: r.status,
+        fulfillment_status: isComp ? "completed" : isPart ? "partial" : "pending",
+        whatsapp_sent: Boolean(r.whatsapp_sent),
+        created_at: r.created_at
+      };
+    });
+
+    return res.status(200).json(sanitized);
+  } catch (e) {
+    return res.status(500).json({ detail: "Sorgu hatası: " + e.message });
+  }
 }

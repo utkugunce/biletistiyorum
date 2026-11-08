@@ -4,6 +4,16 @@
    Modern, Hızlı, Mobil Uyumlu Kulüp Personeli Bilet Portalı
    ========================================================= */
 
+/* Global Hidden Helper (U03) */
+.hidden {
+  display: none !important;
+}
+
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
 :root {
   --font-sans: "Manrope", system-ui, -apple-system, sans-serif;
   --font-mono: "Geist Mono", monospace;

@@ -13,6 +13,7 @@ function initApp() {
   setupStepper();
   setupForm();
   loadInitialData();
+  setupMyRequestsTracking();
   setupPWA();
 }
 
@@ -570,6 +571,22 @@ function setupForm() {
   const form = document.getElementById("formTicketRequest");
   if (!form) return;
 
+  const phoneInput = document.getElementById("inputPhoneNumber");
+  if (phoneInput) {
+    phoneInput.addEventListener("input", (e) => {
+      let val = e.target.value.replace(/\D/g, "");
+      if (val.startsWith("90")) val = val.slice(2);
+      if (val.length > 0 && !val.startsWith("0")) val = "0" + val;
+      val = val.slice(0, 11);
+      let out = "";
+      if (val.length > 0) out = val.slice(0, 4);
+      if (val.length > 4) out += " " + val.slice(4, 7);
+      if (val.length > 7) out += " " + val.slice(7, 9);
+      if (val.length > 9) out += " " + val.slice(9, 11);
+      e.target.value = out;
+    });
+  }
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -636,7 +653,10 @@ function setupForm() {
   });
 }
 
+let lastCreatedRequest = null;
+
 function showSuccessModal(req) {
+  lastCreatedRequest = req;
   const rCode = document.getElementById("receiptCode");
   const rMatch = document.getElementById("receiptMatch");
   const rPerson = document.getElementById("receiptPerson");
@@ -649,6 +669,33 @@ function showSuccessModal(req) {
 
   const modal = document.getElementById("modalRequestSuccess");
   if (modal) modal.classList.remove("hidden");
+
+  // Kodu Kopyala Butonu
+  const btnCopy = document.getElementById("btnCopyReceiptCode");
+  if (btnCopy) {
+    btnCopy.onclick = () => {
+      navigator.clipboard.writeText(req.id).then(() => {
+        showPortalToast(`📋 Takip kodu (${req.id}) panoya kopyalandı.`);
+      }).catch(() => {
+        showPortalToast(`Takip kodu: ${req.id}`);
+      });
+    };
+  }
+
+  // Talebimi Takip Et Butonu
+  const btnTrack = document.getElementById("btnTrackMyRequest");
+  if (btnTrack) {
+    btnTrack.onclick = () => {
+      if (modal) modal.classList.add("hidden");
+      resetForm();
+      switchTab("tab-my-requests");
+      const trackInput = document.getElementById("inputTrackQuery");
+      if (trackInput) {
+        trackInput.value = req.id;
+        searchMyRequests(req.id);
+      }
+    };
+  }
 }
 
 function resetForm() {
@@ -788,5 +835,133 @@ function setupPWA() {
         banner.classList.remove("hidden");
       }
     }, 2500);
+  }
+}
+
+
+// ---------------------------------------------------------
+// 8. TALEPLERİMİ TAKİP ET SORGULAMA FONKSİYONLARI (U10)
+// ---------------------------------------------------------
+function setupMyRequestsTracking() {
+  const btnSearch = document.getElementById("btnSearchMyRequests");
+  const inputQuery = document.getElementById("inputTrackQuery");
+
+  if (btnSearch && inputQuery) {
+    btnSearch.addEventListener("click", () => {
+      const q = inputQuery.value.trim();
+      if (!q || q.length < 4) {
+        showPortalToast("Lütfen en az 4 karakterli takip kodu (ZS-XXXX) veya telefon numarası giriniz.");
+        return;
+      }
+      searchMyRequests(q);
+    });
+
+    inputQuery.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        btnSearch.click();
+      }
+    });
+  }
+}
+
+async function searchMyRequests(query) {
+  const container = document.getElementById("trackResultsContainer");
+  if (!container) return;
+
+  container.innerHTML = `
+    <div style="text-align: center; padding: 25px; color: #7e22ce;">
+      <i class="ph ph-spinner spin" style="font-size: 28px; display: block; margin-bottom: 8px;"></i>
+      Talepleriniz sorgulanıyor...
+    </div>
+  `;
+
+  try {
+    const res = await fetch(`/api/portal/my-requests?q=${encodeURIComponent(query)}`);
+    if (!res.ok) {
+      throw new Error("Sorgu gerçekleştirilemedi");
+    }
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      container.innerHTML = `
+        <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 20px; text-align: center; color: #991b1b;">
+          <i class="ph-bold ph-warning-circle" style="font-size: 28px; display: block; margin-bottom: 6px;"></i>
+          <strong>Eşleşen talep bulunamadı</strong>
+          <p style="font-size: 13px; margin-top: 4px; color: #b91c1c;">"${escapeHtml(query)}" için sistemde kayıtlı aktif bir bilet talebi bulunamadı. Lütfen takip kodunuzu kontrol ediniz.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = "";
+    data.forEach((r) => {
+      const isComp = r.fulfillment_status === "completed";
+      const isPart = r.fulfillment_status === "partial";
+      const statusTitle = isComp
+        ? "Koltuklar Ayrıldı ✅"
+        : isPart
+        ? `Kısmen Ayrıldı (${r.assigned_count}/${r.requested_count}) ⚠️`
+        : "Talep Beklemede ⏳";
+      const statusColor = isComp ? "#059669" : isPart ? "#d97706" : "#2563eb";
+      const statusBg = isComp ? "#ecfdf5" : isPart ? "#fffbeb" : "#eff6ff";
+
+      const card = document.createElement("div");
+      card.style.cssText = `
+        background: #ffffff;
+        border: 1.5px solid #e9d5ff;
+        border-radius: 12px;
+        padding: 16px 18px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      `;
+
+      card.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; margin-bottom: 10px;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-family: var(--font-mono); font-weight: 800; color: #7e22ce; font-size: 14px; background: #f3e8ff; padding: 3px 8px; border-radius: 6px;">${escapeHtml(r.id)}</span>
+              <strong style="color: #1e1b4b; font-size: 15px;">${escapeHtml(r.person)}</strong>
+            </div>
+            <div style="font-size: 13px; color: #64748b; margin-top: 4px;">${escapeHtml(r.match_name)}</div>
+          </div>
+          <span style="background: ${statusBg}; color: ${statusColor}; font-weight: 700; font-size: 12px; padding: 4px 10px; border-radius: 20px; white-space: nowrap;">
+            ${statusTitle}
+          </span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; background: #faf5ff; padding: 12px; border-radius: 8px; font-size: 12.5px;">
+          <div>
+            <span style="color: #6b7280; display: block;">Talep Adedi:</span>
+            <strong style="color: #1e1b4b;">${r.requested_count} Adet</strong>
+          </div>
+          <div>
+            <span style="color: #6b7280; display: block;">Ayrılan Koltuk:</span>
+            <strong style="color: ${r.assigned_count > 0 ? '#059669' : '#6b7280'};">${r.assigned_count} Adet</strong>
+          </div>
+          <div>
+            <span style="color: #6b7280; display: block;">Tercih Edilen Blok:</span>
+            <strong style="color: #1e1b4b;">${escapeHtml(r.target_block || "121")}</strong>
+          </div>
+          <div>
+            <span style="color: #6b7280; display: block;">WhatsApp Durumu:</span>
+            <strong style="color: ${r.whatsapp_sent ? '#059669' : '#6b7280'};">${r.whatsapp_sent ? 'Gönderildi 📬' : 'İletilmedi'}</strong>
+          </div>
+        </div>
+
+        ${r.assigned_seats && r.assigned_seats.length > 0 ? `
+          <div style="margin-top: 10px; font-size: 12px; color: #4b5563;">
+            <span style="font-weight: 600; color: #7e22ce;">Tahsis Edilen Koltuklar:</span>
+            ${r.assigned_seats.map(s => `<span style="display:inline-block; background:#ede9fe; color:#581c87; font-weight:700; font-size:11px; padding:2px 7px; border-radius:4px; margin-left:4px;">${s}</span>`).join('')}
+          </div>
+        ` : ''}
+      `;
+
+      container.appendChild(card);
+    });
+  } catch (err) {
+    container.innerHTML = `
+      <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px; text-align: center; color: #dc2626; font-size: 13px;">
+        Sorgulama hatası: ${escapeHtml(err.message)}
+      </div>
+    `;
   }
 }
