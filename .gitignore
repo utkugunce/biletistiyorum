@@ -33,3 +33,6 @@ utku/
 çağlar/
 *a*lar/
 *.pdf
+
+# Local per-match ownership journal (contains operational file paths)
+.zeren-folder-sync.json

@@ -223,3 +223,44 @@ python "bilet_app\server.py"
 
 ## 8. Otomatik Commit & Push Kuralı
 Bu depoda tamamlanan her geliştirme, hata düzeltmesi veya UI iyileştirmesi sonrasında değişiklikler kullanıcıdan onay beklenmeksizin otomatik olarak `git add .`, anlamlı bir commit mesajı ile `git commit` ve ardından `git push origin main` yapılarak uzak depoya aktarılmalıdır.
+
+---
+
+## 9. Yerel PDF Senkronizasyonu: Kalıcı Sahiplik Kaydı
+
+`bilet_app/folder_sync.py`, uygulamanın yönettiği PDF'leri her maç kökünde ayrı
+`.zeren-folder-sync.json` dosyasında takip eder. Dosya Git'e eklenmez; yerel
+operasyon verisidir. Bir maçın kaydı başka maçın klasörüne uygulanmaz.
+
+- Buluttan açıkça atanan bir PDF taşınmadan önce kaynak/hedef ve içerik özeti
+  atomik olarak kaydedilir. Başarılı taşıma sonrasında kayıt güncellenir.
+- Atama kaldırılınca yalnız bu kayıtta sahipliği bilinen, içeriği değişmemiş
+  PDF kök havuza döner. Başarısız geri taşıma kayıtta kalır; sonraki döngülerde
+  ve servis yeniden başladıktan sonra tekrar denenir.
+- Bilinmeyen manuel dosyalar, elle başka yere taşınmış dosyalar ve içeriği
+  değiştirilmiş dosyalar eski atama varsayılarak köke taşınmaz. Farklı içerikli
+  mevcut hedef dosyanın üzerine yazılmaz; işlem bekler ve konsola hata yazılır.
+- Kayıt bozuksa veya başka maç köküne aitse senkronizasyon güvenli şekilde
+  durur. Kaydı silerek düzeltmeye çalışmayın; sahiplik geçmişi kaybolur.
+- İlk yükseltmede eski sürümün kalıcı geçmişi bulunmadığından, yalnız halen
+  bulutta atanmış ve diskte görülen biletler takip altına alınır. Yükseltmeden
+  önce kaldırılmış atamalar ile manuel klasörler güvenle ayırt edilemez;
+  bunlar otomatik taşınmaz ve operatör tarafından kontrol edilmelidir.
+
+`bilet_app/ticket_inventory.py` hem blok hem havuz isimlerini tam klasör adına
+göre tanır. Yalnız kişi klasöründen önceki envanter katmanları kaldırılır:
+`Havuz/Kişi/ZS-123` ve `121 BLOK/Kişi/Genel` kişiye atanmış kalır.
+`Saha Ekibi` gibi kişi/grup isimleri kısmi kelime eşleşmesiyle envanter sayılmaz.
+
+Regresyon testleri (canlı Supabase veya gerçek bilet klasörüne erişmez):
+
+```bash
+python -m unittest discover -s tests -v
+python scripts/sync_copies.py --check
+```
+
+Bu değişiklikler yerel Python servisindedir. Windows bilgisayarda güncel
+`bilet_app` kodu alınmalı; `folder_sync.py` ve `ticket_inventory.py` dahil yeni
+dosyalar bulunmalı ve servis yeniden başlatılmalıdır. Vercel dağıtımı yerel
+Windows servisini güncellemez. Gerçek Explorer/Windows oturum kabul testi ayrı
+yapılmalıdır; Linux üzerindeki dosya testleri bu kabul testinin yerine geçmez.

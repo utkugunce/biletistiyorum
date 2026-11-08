@@ -75,8 +75,14 @@ check("admin.js returns active match name", "active_match_name" in admin_js)
 print("\n[T09, T10] Checking Windows Bridge & Local Server:")
 with open("bilet_app/sync_helper.py", "r", encoding="utf-8") as f:
     sync_py = f.read()
-check("sync_helper sanitizes Windows folder names", "sanitize_filename_component" in sync_py and "re.sub" in sync_py)
-check("sync_helper implements bidirectional return to root pool", "Ataması kalkan bilet havuza geri döndü" in sync_py)
+# Run actual filesystem regressions, including restart/retry and match isolation.
+# Keyword checks cannot establish ownership or successful PDF reconciliation.
+import subprocess
+sync_result = subprocess.run(
+    [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-v"],
+    check=False,
+)
+check("Folder ownership, restart/retry and inventory regression tests", sync_result.returncode == 0)
 
 # Test live local daemon status on port 8765
 try:

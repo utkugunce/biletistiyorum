@@ -16,6 +16,9 @@ import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import quote
+from ticket_inventory import (
+    assignment_directory_parts, classify_ticket_directory, is_inventory_directory,
+)
 
 from fastapi import FastAPI, File, Form, HTTPException, Query, UploadFile, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
@@ -403,13 +406,8 @@ state_mgr = StateManager()
 
 
 def _is_raw_block_folder(folder_name: str) -> bool:
-    """Klasör adı '121 BLOK', '102' veya 'SAHA İÇİ' gibi salt blok klasörü mü kontrol eder."""
-    t = folder_name.lower().strip()
-    tr_map = str.maketrans("çğıöşüiı", "cgiosuii")
-    norm = t.translate(tr_map).replace("̇", "")
-    if "saha" in norm:
-        return True
-    return bool(re.match(r"^\d{3}(\s*blok)?$", norm))
+    """Compatibility helper using the shared, exact inventory name rules."""
+    return is_inventory_directory(folder_name)
 
 
 def scan_match_folder(folder: Path) -> Dict[str, Any]:
@@ -433,9 +431,12 @@ def scan_match_folder(folder: Path) -> Dict[str, Any]:
     for root, dirs, files in os.walk(folder):
         dirs[:] = [d for d in dirs if d not in IGNORED_DIRS and not d.startswith(".")]
         rel_root = Path(root).relative_to(folder)
-        rel_parts = [p for p in rel_root.parts if not _is_raw_block_folder(p)]
+        directory_parts = assignment_directory_parts(rel_root.parts)
 
         for fname in files:
+            # Moving one virtual assignment must not change the owner of the
+            # remaining PDFs scanned from the same inventory directory.
+            rel_parts = list(directory_parts)
             parsed = parse_ticket_filename(fname)
             if not parsed:
                 continue
@@ -465,22 +466,7 @@ def scan_match_folder(folder: Path) -> Dict[str, Any]:
                 del virtual_map[key]
                 plan_dirty = True
 
-            if len(rel_parts) == 0:
-                group = ""
-                subgroup = ""
-                status = "unassigned"
-            elif any(part.strip().lower().endswith("blok") or part.strip().lower().startswith("blok") or "saha" in part.strip().lower() or part.strip().lower() in ("biletler", "biletinial", "unassigned", "genel", "havuz") for part in rel_parts):
-                group = ""
-                subgroup = ""
-                status = "unassigned"
-            elif len(rel_parts) == 1:
-                group = rel_parts[0]
-                subgroup = ""
-                status = "diger" if group.lower() in ("diğer", "diger") else "assigned"
-            else:
-                group = rel_parts[0]
-                subgroup = "/".join(rel_parts[1:])
-                status = "diger" if group.lower() in ("diğer", "diger") else "assigned"
+            group, subgroup, status = classify_ticket_directory(rel_parts)
 
             if group:
                 state_mgr.ensure_group_in_templates(group, subgroup)
