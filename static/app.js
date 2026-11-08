@@ -500,8 +500,8 @@ function renderSeatingStage() {
         if (highlightedLabel) {
           cell.classList.add("dimmed-group");
         }
-        cell.title = `${bInfo.id} Blok · Sıra ${rNum} Koltuk ${seatNum}\nDurum: Boş (Tıklayarak bir kişiye atayabilirsiniz)`;
-        cell.innerHTML = `<span class="seat-num">${seatNum}</span><span class="seat-owner">Boş</span>`;
+        cell.title = `${bInfo.id} Blok · Sıra ${rNum} Koltuk ${seatNum}\nDurum: PDF BİLET YOK (Klasörde bu koltuğun bileti bulunmuyor)`;
+        cell.innerHTML = `<span class="seat-num">${seatNum}</span><span class="seat-owner">Biletsiz</span>`;
       } else {
         const isAssigned = ticket.status === "assigned";
         const isDiger = ticket.status === "diger";
@@ -521,6 +521,10 @@ function renderSeatingStage() {
           }
         }
 
+        if (!isAssigned && !isDiger) {
+          cell.classList.add("has-ticket-available");
+          cell.title = `${bInfo.id} Blok · Sıra ${rNum} Koltuk ${seatNum}\nDurum: BOŞTA (PDF Bilet Mevcut, Atanabilir)`;
+        }
         cell.style.backgroundColor = bgColor;
         if (bgColor === "#FFFFFF") {
           cell.style.color = "#334155";
@@ -706,7 +710,13 @@ function selectSeatRange(start, end) {
 }
 
 function toggleEntireRow(rowNum, cells) {
-  const rowSeatIds = cells.filter((s) => s !== null).map((s) => `${rowNum}-${s}`);
+  const bInfo = appState.blocks[currentBlockId] || {};
+  const tMap = bInfo.tickets || {};
+  // Row içinde PDF bileti olan koltuklar varsa öncelikle onları seç/bırak
+  const ticketsInRow = cells.filter((s) => s !== null && tMap[`${rowNum}-${s}`]);
+  const targetCells = ticketsInRow.length > 0 ? ticketsInRow : cells.filter((s) => s !== null);
+
+  const rowSeatIds = targetCells.map((s) => `${rowNum}-${s}`);
   const allSelected = rowSeatIds.every((id) => selectedSeats.has(id));
   rowSeatIds.forEach((id) => {
     if (allSelected) selectedSeats.delete(id);
@@ -761,9 +771,22 @@ function updateSelectionBar() {
   idleEl.classList.add("hidden");
   activeEl.classList.remove("hidden");
 
+  const bInfo = appState.blocks[currentBlockId] || {};
+  const tMap = bInfo.tickets || {};
+  let pdfCount = 0;
+  selectedSeats.forEach((sid) => {
+    if (tMap[sid]) pdfCount++;
+  });
+
   const countTextEl = document.getElementById("selCountText");
   if (countTextEl) {
-    countTextEl.textContent = `${count} Koltuk`;
+    if (pdfCount < count && pdfCount > 0) {
+      countTextEl.textContent = `${count} Koltuk (${pdfCount} PDF Biletli)`;
+    } else if (pdfCount === 0 && count > 0) {
+      countTextEl.textContent = `${count} Koltuk (0 PDF Bilet)`;
+    } else {
+      countTextEl.textContent = `${count} Koltuk`;
+    }
   } else {
     document.getElementById("selCountBadge").textContent = `${count} Koltuk`;
   }
