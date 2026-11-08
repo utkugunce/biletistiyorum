@@ -469,6 +469,10 @@ def scan_match_folder(folder: Path) -> Dict[str, Any]:
                 group = ""
                 subgroup = ""
                 status = "unassigned"
+            elif any(part.strip().lower().endswith("blok") or part.strip().lower().startswith("blok") or "saha" in part.strip().lower() or part.strip().lower() in ("biletler", "biletinial", "unassigned", "genel", "havuz") for part in rel_parts):
+                group = ""
+                subgroup = ""
+                status = "unassigned"
             elif len(rel_parts) == 1:
                 group = rel_parts[0]
                 subgroup = ""
