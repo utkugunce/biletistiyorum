@@ -30,17 +30,23 @@ function formatWaPhone(raw) {
 function lookupPhone(person, phonebook) {
   if (!person) return "";
   const pNorm = normalizeName(person);
-  for (const [k, v] of Object.entries(phonebook)) {
-    if (normalizeName(k) === pNorm) return v;
-  }
+  const entries = Object.entries(phonebook).filter(([, value]) => String(value || '').trim());
+  const uniquePhone = matches => {
+    const numbers = new Set(matches.map(([, value]) => formatWaPhone(value)));
+    return numbers.size === 1 ? String(matches[0][1]).trim() : '';
+  };
+  const exact = entries.filter(([name]) => normalizeName(name) === pNorm);
+  if (exact.length) return uniquePhone(exact);
   if (pNorm === "asc" || pNorm === "ahmet salih") {
     if (phonebook["Ahmet Salih Canbaz"]) return phonebook["Ahmet Salih Canbaz"];
   }
-  for (const [k, v] of Object.entries(phonebook)) {
-    const kNorm = normalizeName(k);
-    if (pNorm.length >= 3 && (pNorm.includes(kNorm) || kNorm.includes(pNorm))) {
-      return v;
-    }
+  if (pNorm.length >= 3) {
+    const matches = entries.filter(([name]) => {
+      const key = normalizeName(name);
+      return key && (pNorm.includes(key) || key.includes(pNorm));
+    });
+    // A short name may resolve only when every match agrees on the number.
+    return uniquePhone(matches);
   }
   return "";
 }

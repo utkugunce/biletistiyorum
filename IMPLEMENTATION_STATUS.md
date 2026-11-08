@@ -8,7 +8,7 @@ bulgularını güncel kod ve gerçek doğrulama durumuyla eşler. Kodun testte g
 |---|---|---|
 | T01 | Yönetici listesi korunur; personel takibi tek talebe özel gizli anahtar ister; özel statik dosya yolları kapalıdır. | API negatif testleri geçti. Özel dosya yollarının canlı koruması doğrulandı. Yeni takip API'si güvenli backend yayınıyla devreye girecek. |
 | T02 | scrypt parola hash'i, rastgele süreli oturum, sunucuda iptal, deneme sınırı, HttpOnly çerez, localStorage token temizliği. | Bulut ve yerel auth testleri geçti. Üretim başlangıç parolası Vercel'de tanımlanmalı. |
-| T03 | Yöntem/Origin kontrolleri, dar yerel erişim ve yetkili companion API; anonim tablo izinlerini kaldıran SQL hazır. | API testleri geçti. **Supabase RLS/GRANT geçişi uygulanmadı; yönetim bağlantısı gerekiyor.** |
+| T03 | Yöntem/Origin kontrolleri, dar yerel erişim ve yetkili companion API; anonim tablo izinlerini kaldıran SQL hazır. | API testleri geçti. Supabase RLS/GRANT geçişi kullanıcı tarafından uygulandı; rol yetkileri ekran görüntüsüyle, anonim REST erişimi 401 ile doğrulandı. |
 | T04–T05 | Veri hatasında açık hata; boş snapshot/bellek fallback yok; sunucu UUID'si ve idempotent kayıt. | Kesinti, geçersiz girdi ve yeniden gönderim testleri geçti. |
 | T06–T07 | PostgreSQL koşullu UPDATE ile CAS; atama, düzenleme, silme ve gönderim ortak snapshot'ta; request_id izolasyonu. | Aynı/farklı koltuk yarışları, aynı kişinin çoklu talebi, kısmi atama, eski kaydı silme ve dolu hedef testleri geçti. |
 | T08 | Maça özel atama/şablon, dinamik envanter, fiziksel/sanal ayrımı, açıkça desteklenmeyen bulut işlemlerinde hata. | İki maç izolasyonu ve envanter testleri geçti. Windows klasörü bulut match_id'sine bağlanmalı. |
@@ -40,7 +40,7 @@ değişkenlerini Vercel’e ekledi. Tam geçiş sırası
 `DEPLOYMENT_CHECKLIST.md` dosyasındadır. Gizli anahtarlar Git'e veya sohbete
 konulmamalıdır. Mevcut talepler/sistem snapshot'ı ve manuel PDF'ler topluca silinmez.
 
-Otomatik sonuç: 39 Python testi, 36 Node API testi, sekiz ekran genişliğinde
+Otomatik sonuç: 39 Python testi, 40 Node API testi, sekiz ekran genişliğinde
 Chromium senaryoları ve kopya/sözdizimi kontrolleri geçti. Bunlar taklit veritabanı
 ve geçici dosyalarla çalışır. Üretim Supabase politikası, Vercel ortam kurulumu,
 yetkili gerçek backend erişimi ve Windows Explorer kabulü ayrı adımlardır.
@@ -73,3 +73,24 @@ anonim tablo erişiminin kapandığının doğrulanması, yeni parolayla yöneti
 kontrolü ve Windows köprüsünün güncellenip gerçek PDF/Explorer kabulünün yapılması.
 Bu adımlar bu kayıtta henüz tamamlandı sayılmaz. Windows güncellenene kadar
 eski servisin durdurulması gerekir; RLS geçişinden sonra eski anonim köprü çalışmaz.
+
+## Windows bağlantısı ve telefon rehberi uyumluluğu
+
+Kullanıcı üretimde yeni parolayla giriş yapıp verilerin göründüğünü doğruladı.
+Windows kurulumu `d4b1b33` sürümüne fast-forward ile güncellendi. Companion anahtarı
+Windows'a tanımlandı ve yetkili maç listesi alındı. Eski Python servisi durduruldu;
+aktif Kuzeyboru maç klasörünün ayrı yerel yedeği alınıp `cloud_match_id` bağlandı.
+Yeniden başlatma sonrasında kullanıcı canlı panelde “Yerel Servis: Bağlı” gördü.
+Gerçek PDF/Explorer kabulü henüz tamamlanmadı.
+
+İlk gönderim kontrolünde telefonların görünmediği bildirildi. Geçişte atlanan
+legacy rehber fallback'i geri bağlandı: talebe özel numara önceliklidir; boşsa
+özelleştirilmiş rehber, ardından mevcut temel rehber kullanılır. Admin özeti,
+dağıtım merkezi ve companion listesi aynı çözümlemeyi kullanır. Bu okuma hiçbir
+telefon kaydını değiştirmez. Belirsiz kısa isim birden fazla farklı telefonla
+eşleşiyorsa rastgele numara seçilmez. Dağıtım ekranının beklediği bilet adedi,
+koltuk açıklaması ve gönderim yüzdesi alanları da sözleşmeye eklendi.
+
+Telefon önceliği, eski rehber, companion görünümü, belirsiz isim ve dağıtım alanları
+regresyonlarıyla Node API testlerinin sayısı 40 oldu. Son düzeltmenin canlı
+telefon görünümü kullanıcıyla ayrıca doğrulanmalıdır.

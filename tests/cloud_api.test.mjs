@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import admin from '../api/admin.js';
+import admin, * as adminHelpers from '../api/admin.js';
+import { runAdmin } from '../lib/admin-actions.js';
 import request from '../api/request.js';
 import track from '../api/my-requests.js';
 import staff from '../api/staff.js';
@@ -255,4 +256,40 @@ test('a legacy anon key cannot masquerade as the server database credential',asy
  process.env.SUPABASE_SERVICE_ROLE_KEY='eyJhbGciOiJIUzI1NiJ9.'+Buffer.from(JSON.stringify({role:'anon'})).toString('base64url')+'.test';
  try {const result=await run(admin,req('/api/state',{},'GET'));assert.equal(result.code,503);assert.match(result.body.detail,/service_role/);assert.equal(writes,0);}
  finally {process.env.SUPABASE_SERVICE_ROLE_KEY=previous;}
+});
+
+test('legacy directory phones appear in summary and dispatch without rewriting request rows',async()=>{
+ reset();rows[0].phone='';await run(admin,assign('REQ-A',1));
+ const helpers={...adminHelpers,getBaseData:()=>({...adminHelpers.getBaseData(),phonebook:{'Test Person':'05320000001'}})};
+ const runWithDirectory=async path=>{const res=response();await runAdmin(req(path,{},'GET'),res,await loadSystemState(),helpers);return res;};
+ const before=writes;
+ const summary=await runWithDirectory('/api/excel/summary');
+ assert.equal(summary.body.requests.find(r=>r.request_id==='REQ-A').phone,'05320000001');
+ const dispatch=await runWithDirectory('/api/dispatch/list');
+ assert.equal(dispatch.body.recipients[0].clean_phone,'905320000001');
+ assert.equal(rows[0].phone,'');assert.equal(writes,before);
+});
+test('per-request phones take priority and normalized custom directory phones reach Windows',async()=>{
+ reset();rows[0].phone='';rows[1].person='Test Person';
+ state.custom_phones={'TEST PERSON':'05320000002'};
+ const summary=await run(admin,req('/api/excel/summary',{},'GET'));
+ assert.equal(summary.body.requests.find(r=>r.request_id==='REQ-A').phone,'05320000002');
+ assert.equal(summary.body.requests.find(r=>r.request_id==='REQ-B').phone,'05321234567');
+ const headers={authorization:'Bearer '+process.env.ZEREN_COMPANION_TOKEN};
+ const bridge=await run(admin,req('/api/companion/requests?match_id='+DEFAULT_MATCH_ID,{},'GET',false,headers));
+ assert.equal(bridge.body.find(r=>r.id==='REQ-A').phone,'05320000002');
+});
+test('directory matching never picks an arbitrary phone for an ambiguous short name',()=>{
+ assert.equal(adminHelpers.lookupPhone('Test',{'Test One':'05320000001','Test Two':'05320000002'}),'');
+ assert.equal(adminHelpers.lookupPhone('Test One',{'Test One':'05320000001','Test Two':'05320000002'}),'05320000001');
+});
+
+test('dispatch retains the count and seat labels required by its existing UI',async()=>{
+ reset();await run(admin,assign('REQ-A',1));
+ const result=await run(admin,req('/api/dispatch/list',{},'GET'));
+ assert.equal(result.body.recipients[0].ticket_count,1);
+ assert.match(result.body.recipients[0].seats_formatted,/102.*3-1/);
+ assert.equal(result.body.progress_pct,0);
+ await run(admin,req('/api/dispatch/mark-sent',{request_id:'REQ-A',sent:true}));
+ assert.equal((await run(admin,req('/api/dispatch/list',{},'GET'))).body.progress_pct,100);
 });
