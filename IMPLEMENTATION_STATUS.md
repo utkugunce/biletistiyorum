@@ -99,3 +99,23 @@ Son eşzamanlı Windows retry değişikliği birleştirilirken beş kez atomik r
 tekrarı korundu; kalıcı kilitte journal dosyasını atomik olmayan copy ile ezme
 fallback'i kaldırıldı. Kilitli journal'ın tüm denemeler sonrasında aynı içerikle
 korunduğu regresyonla doğrulandı. Bu nedenle Python test sayısı 40 oldu.
+
+## Gerçek Windows kabulü ve eski arayüz önbelleği
+
+Kullanıcı telefonların tekrar göründüğünü; WhatsApp'ın doğru kişiye açıldığını,
+Gezgin'de ilgili talep klasörünün açıldığını ve PDF'lerin içinde olduğunu
+bildirdi. Gönderim işaretleme düğmesi ise ekran görüntüsünde görünmedi.
+Canlı sunucudaki güncel JS düğmeyi içeriyordu; görüntüde yeni takip bağlantısı
+düğmesinin de olmaması eski istemci paketine işaret etti.
+
+Admin/portal JS ve CSS referansları sürümlendi. Ortak `pwa-update.js`, iki
+sayfada da worker güncellemesini kontrol eder; doldurulmuş formu otomatik
+reload ile silmez. PWA v5 HTML/JS/CSS'i network-first alır, çevrimdışıyken
+önbellek kullanır. API'ler önbelleğe girmez; çevrimdışı yanıt 503'tür. Opsiyonel
+CDN dosyası başarısızlığı tüm yerel precache işlemini iptal etmez.
+
+Gerçek Chromium testine gönderildi işaretleme ve geri alma eklendi. Ayrı bir
+worker testi v4 önbelleğinde eski admin/JS başlatarak v5'e yükseltmeyi, yeni
+online paketin cache'i geçmesini ve offline davranışı kontrol eder. Bunlar
+canlı talep değiştirmez veya mesaj göndermez. Gönderim düğmesinin üretimdeki
+kullanıcı tarayıcısında görünmesi ayrıca doğrulanacaktır.

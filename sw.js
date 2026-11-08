@@ -1,9 +1,17 @@
 // ZEREN SPOR KULÜBÜ — BİLET PORTALI SERVICE WORKER (PWA)
-const CACHE_NAME = "zeren-bilet-pwa-v4";
+const CACHE_NAME = "zeren-bilet-pwa-v5";
 
 const PRECACHE_ASSETS = [
   "/",
   "/index.html",
+  "/admin",
+  "/admin.html",
+  "/static/styles.css?v=20261108-5",
+  "/static/app.js?v=20261108-5",
+  "/static/accessibility.js?v=20261108-5",
+  "/static/pwa-update.js?v=20261108-5",
+  "/static/bilet_istiyorum.css?v=20261108-5",
+  "/static/bilet_istiyorum.js?v=20261108-5",
   "/bilet_istiyorum.css",
   "/bilet_istiyorum.js",
   "/zeren_logo.png",
@@ -23,9 +31,7 @@ self.addEventListener("install", (event) => {
   self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(PRECACHE_ASSETS).catch((err) => {
-        console.warn("PWA: Bazı varlıklar önbelleğe alınamadı:", err);
-      });
+      return Promise.all(PRECACHE_ASSETS.map(asset => cache.add(asset).catch(() => {})));
     })
   );
 });
@@ -67,7 +73,29 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Statik varlıklar: Stale-While-Revalidate
+  // Fetch current HTML, JS and CSS first. A stale admin bundle can omit
+  // actions supported by the current API. Keep cached assets for offline use.
+  const applicationAsset = url.origin === self.location.origin && (
+    req.mode === "navigate" || ["script", "style"].includes(req.destination) ||
+    /\.(?:html|js|css)$/.test(url.pathname) || ["/admin", "/panel", "/yonetim", "/bilet-istiyorum", "/talep", "/"].includes(url.pathname)
+  );
+  if (applicationAsset) {
+    event.respondWith((async () => {
+      try {
+        const response = await fetch(req, { cache: "no-cache" });
+        if (!response.ok) throw new Error("Application asset unavailable");
+        await caches.open(CACHE_NAME).then(cache => cache.put(req, response.clone())).catch(() => {});
+        return response;
+      } catch {
+        return await caches.match(req) || new Response("Bağlantı kurulamadı. Lütfen yeniden deneyin.", {
+          status: 503, headers: { "Content-Type": "text/plain; charset=utf-8" }
+        });
+      }
+    })());
+    return;
+  }
+
+  // Images and other static assets may use stale-while-revalidate.
   event.respondWith(
     caches.match(req).then((cached) => {
       const fetchPromise = fetch(req)

@@ -21,6 +21,7 @@ REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 MAPPINGS = [
     (".vercelignore", ["biletistiyorum/.vercelignore"]),
+    ("pwa-update.js", ["static/pwa-update.js", "biletistiyorum/static/pwa-update.js", "bilet_app/static/pwa-update.js"]),
     ("accessibility.js", ["static/accessibility.js", "biletistiyorum/static/accessibility.js", "bilet_app/static/accessibility.js"]),
     ("lib/traffic.js", ["biletistiyorum/lib/traffic.js"]),
     ("lib/store.js", ["biletistiyorum/lib/store.js"]),

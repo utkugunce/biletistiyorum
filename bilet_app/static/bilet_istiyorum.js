@@ -803,15 +803,7 @@ function escapeHtml(str) {
 let deferredPrompt = null;
 
 function setupPWA() {
-  // 1. Service Worker Kaydı
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then((reg) => console.log("PWA ServiceWorker devrede:", reg.scope))
-        .catch((err) => console.log("PWA ServiceWorker kayıt hatası:", err));
-    });
-  }
+  // Worker registration and update checks are shared in pwa-update.js.
 
   // 2. Zaten PWA standalone modunda çalışıyorsa banner gösterme
   const isStandalone =

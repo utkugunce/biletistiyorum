@@ -21,7 +21,7 @@ row = {'request_id': 'REQ-A', 'person': 'Test Person', 'source': 'portal', 'phon
        'status_color': '#047857', 'status_badge': 'Koltuklar hazır', 'progress_pct': 100,
        'whatsapp_sent': False, 'suggested_group': 'Test Person', 'suggested_subgroup': 'Test'}
 access = 'ZS-00000000-0000-0000-0000-000000000001.' + 'a' * 64
-submissions, errors = [], []
+submissions, errors, sent_actions = [], [], []
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *args):
@@ -38,6 +38,10 @@ def api(route):
     elif path == 'state': data = state
     elif path in ['excel/summary', 'excel/reload']: data = {'ok': True, 'requests': [row], 'total_requested': 1, 'total_assigned': 1, 'total_pending': 0}
     elif path == 'status': data = {'companion': None, 'commands': []}
+    elif path == 'dispatch/mark-sent':
+        sent_actions.append(request.post_data_json)
+        row['whatsapp_sent'] = request.post_data_json['sent']
+        data = {'ok': True, 'success': True}
     elif path == 'dispatch/list': data = {'recipients': [], 'pending_count': 0}
     elif path == 'portal/matches': data = [{**m, 'blocks': ['102','121','SAHA']} for m in state['matches']]
     elif path == 'portal/staff': data = {'groups': [{'group': 'Test', 'members': ['Test Person']}]}
@@ -79,8 +83,23 @@ try:
                 directory = Path(os.environ['UI_SCREENSHOT_DIR']); directory.mkdir(parents=True, exist_ok=True)
                 page.screenshot(path=str(directory / f'admin-{width}.png'), full_page=True)
             print('PASS admin controls and menu', width)
+        page.set_viewport_size({'width': 1440, 'height': 1000})
+        mark = page.locator('[data-act="mark-sent"]')
+        assert mark.is_visible()
+        assert mark.inner_text() == 'Gönderildi olarak işaretle'
+        mark.click()
+        page.locator('#tabBtnSent').click()
+        undo = page.locator('[data-act="mark-sent"]')
+        assert undo.is_visible()
+        assert undo.inner_text() == 'Gönderim işaretini kaldır'
+        undo.click()
+        page.locator('#tabBtnExcel').click()
+        assert mark.is_visible()
+        assert sent_actions == [{'request_id':'REQ-A','person':'Test Person','sent':True}, {'request_id':'REQ-A','person':'Test Person','sent':False}]
+        print('PASS visible request sent action, sent tab and undo using the request identifier')
         page.set_viewport_size({'width': 390, 'height': 844})
         page.locator('#tabBtnMobileSidebar').click()
+        assert mark.is_visible()
         assert page.locator('#sidebarColumn').is_visible()
         page.keyboard.press('Escape')
         assert not page.locator('#sidebarColumn').is_visible()
