@@ -119,3 +119,11 @@ worker testi v4 önbelleğinde eski admin/JS başlatarak v5'e yükseltmeyi, yeni
 online paketin cache'i geçmesini ve offline davranışı kontrol eder. Bunlar
 canlı talep değiştirmez veya mesaj göndermez. Gönderim düğmesinin üretimdeki
 kullanıcı tarayıcısında görünmesi ayrıca doğrulanacaktır.
+
+## Windows klasör düzenleme ve taşıma hazırlığı
+
+Kullanıcı program kökünü `C:\projects\biletistiyorum` konumuna taşımayı istedi.
+Önizleme ve doğrulanmış kopya üreten bağımsız taşıma aracı hazırlandı. Arşiv,
+aktif maçlar ve program ayrı tutulur; API/static kopya mimarisi değiştirilmez.
+10 taşıma regresyonu geçti; toplam Python testi sayısı 50 oldu. Gerçek Windows
+önizlemesi, taşıması ve yeni konumdan servis kabulü bu kayıtta henüz bekliyor.

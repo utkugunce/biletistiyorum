@@ -309,3 +309,14 @@ yapılmalıdır; Linux üzerindeki dosya testleri bu kabul testinin yerine geçm
   Windows kabulü için `DEPLOYMENT_CHECKLIST.md` temel alınır. Yönetim bağlantısı
   olmadan yeni güvenli backend’i üretime almak mevcut sistemi kesebilir;
   önce erişim ve ortam bağımlılıkları tamamlanmalıdır.
+
+## 11. Windows çalışma klasörünü taşıma
+
+Programı `C:\projects\biletistiyorum` konumuna taşımak için
+`WINDOWS_WORKSPACE_MIGRATION.md` izlenir. `scripts/migrate_windows_workspace.py`
+önce salt okunur plan üretir; `--apply` servis kapalıyken doğrulanmış kopyayı
+hazırlar. Maçlar programın kardeşi `Zeren_Bilet_Maclar` altında kalır; eski,
+yönetilmeyen kişi PDF klasörleri ayrı arşive alınır. Kaynak silinmez. Mutlak
+storage yolları ve journal kökleri doğrulanmış yeni konuma uyarlanır; operasyon
+verileri Git'e eklenmez. Yeni konumda gerçek kabul tamamlanmadan eski kurulum
+kaldırılmaz.
