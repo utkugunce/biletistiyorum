@@ -1,3 +1,75 @@
+// =========================================================
+// KOLTUK PLANI ZOOM & EKRANA SIĞDIRMA YÖNETİMİ
+// =========================================================
+const SEAT_ZOOM_LEVELS = [
+  { label: "%70", seatW: 32, seatH: 28, gap: 4, font: 10, labelW: 40 },
+  { label: "%85", seatW: 38, seatH: 34, gap: 5, font: 11, labelW: 46 },
+  { label: "%100", seatW: 44, seatH: 38, gap: 6, font: 12, labelW: 50 },
+  { label: "%120", seatW: 52, seatH: 44, gap: 7, font: 13, labelW: 56 },
+];
+let currentZoomIndex = 2; // Varsayılan %100
+
+function applyZoomLevel(idx) {
+  currentZoomIndex = Math.max(0, Math.min(SEAT_ZOOM_LEVELS.length - 1, idx));
+  const z = SEAT_ZOOM_LEVELS[currentZoomIndex];
+  const root = document.documentElement;
+  root.style.setProperty("--seat-w", `${z.seatW}px`);
+  root.style.setProperty("--seat-h", `${z.seatH}px`);
+  root.style.setProperty("--seat-gap", `${z.gap}px`);
+  root.style.setProperty("--seat-font", `${z.font}px`);
+  root.style.setProperty("--row-label-w", `${z.labelW}px`);
+
+  const lbl = document.getElementById("zoomLevelLabel");
+  if (lbl) {
+    lbl.textContent = z.label;
+  }
+}
+
+function autoFitSeatingGrid() {
+  const scrollEl = document.getElementById("seatingGridScroll");
+  if (!scrollEl) return;
+  const availW = scrollEl.clientWidth - 56;
+  const bInfo = appState && appState.blocks ? appState.blocks[currentBlockId] : null;
+  if (!bInfo || availW <= 200) return;
+  const maxSeatsInRow = Math.max(...(bInfo.rows || []).map(r => (r.cells || []).length), 10);
+
+  let bestIdx = 0;
+  for (let i = SEAT_ZOOM_LEVELS.length - 1; i >= 0; i--) {
+    const z = SEAT_ZOOM_LEVELS[i];
+    const estimatedW = maxSeatsInRow * (z.seatW + z.gap) + z.labelW + 30;
+    if (estimatedW <= availW) {
+      bestIdx = i;
+      break;
+    }
+  }
+  applyZoomLevel(bestIdx);
+}
+
+function copyPortalLink() {
+  const url = "https://biletistiyorum.vercel.app";
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      showToast("🔗 biletistiyorum.vercel.app bağlantısı kopyalandı! WhatsApp'ta personele gönderebilirsiniz.");
+    }).catch(() => {
+      prompt("Portal linkini kopyalayınız:", url);
+    });
+  } else {
+    prompt("Portal linkini kopyalayınız:", url);
+  }
+}
+window.copyPortalLink = copyPortalLink;
+
+function clearSearchFilter() {
+  excelSearchQuery = "";
+  excelBlockFilter = "ALL";
+  const searchInput = document.getElementById("inputSearchExcel");
+  const blockSelect = document.getElementById("selectExcelBlockFilter");
+  if (searchInput) searchInput.value = "";
+  if (blockSelect) blockSelect.value = "ALL";
+  renderExcelPanel();
+}
+window.clearSearchFilter = clearSearchFilter;
+
 // T10: Yerel companion daemon durum takibi
 let isLocalServiceOnline = false;
 
@@ -299,23 +371,27 @@ function renderQuickBlockDropdown() {
 
 function renderActiveBlockPills() {
   const container = document.getElementById("activeBlocksPills");
+  const toolbarLeft = document.querySelector(".toolbar-left");
+  if (!container) return;
   container.innerHTML = "";
 
   const activeBlocks = Object.values(appState.blocks).filter(
     (b) => (b.total_active || b.total_pdfs) > 0
   );
 
-  // Birden fazla aktif blok varsa hızlı geçiş hapları göster
-  if (activeBlocks.length > 1) {
+  if (activeBlocks.length > 0) {
+    if (toolbarLeft) toolbarLeft.classList.add("has-pills");
     activeBlocks.forEach((b) => {
       const cnt = b.total_active || b.total_pdfs || 0;
-      const bTitle = b.id === "SAHA" ? "Saha İçi" : b.id;
+      const bTitle = b.id === "SAHA" ? "Saha İçi" : `${b.id} Blok`;
       const btn = document.createElement("button");
       btn.className = "block-pill-btn" + (b.id === currentBlockId ? " active" : "");
       btn.innerHTML = `<span>${bTitle}</span> <strong>${b.assigned_count}/${cnt}</strong>`;
       btn.addEventListener("click", () => selectBlock(b.id));
       container.appendChild(btn);
     });
+  } else {
+    if (toolbarLeft) toolbarLeft.classList.remove("has-pills");
   }
 }
 
@@ -424,11 +500,19 @@ function selectBlock(blockId) {
   currentBlockId = blockId;
   selectedSeats.clear();
   lastClickedSeat = null;
+
+  const scrollEl = document.getElementById("seatingGridScroll");
+  if (scrollEl) {
+    scrollEl.scrollTop = 0;
+    scrollEl.scrollLeft = 0;
+  }
+
   renderQuickBlockDropdown();
   renderArenaMap();
   renderActiveBlockPills();
   renderSeatingStage();
   updateSelectionBar();
+  autoFitSeatingGrid();
 }
 
 // ---------------------------------------------------------
@@ -555,11 +639,17 @@ function renderSeatingStage() {
         }
 
         const pdfNote = ticket.has_pdf === false ? " (Planlandı)" : "";
-        cell.title = `${bInfo.id} Blok · Sıra ${rNum} Koltuk ${seatNum}\nKişi/Grup: ${ticket.label || "Ana Klasör"}${pdfNote} · Talep: ${ticket.request_id || "Plan"}`;
-        cell.innerHTML = `
-          <span class="seat-num">${seatNum}</span>
-          <span class="seat-owner" style="">${escapeHtml(ownerShort)}</span>
-        `;
+        if (!isAssigned && !isDiger) {
+          cell.title = `${bInfo.id} Blok · Sıra ${rNum} Koltuk ${seatNum}\nDurum: BOŞTA (PDF Bilet Mevcut, Atanabilir)`;
+          cell.innerHTML = `<span class="seat-num">${seatNum}</span>`;
+        } else {
+          cell.classList.add("has-owner");
+          cell.title = `${bInfo.id} Blok · Sıra ${rNum} Koltuk ${seatNum}\nKişi/Grup: ${ticket.label || "Ana Klasör"}${pdfNote} · Talep: ${ticket.request_id || "Plan"}`;
+          cell.innerHTML = `
+            <span class="seat-num">${seatNum}</span>
+            <span class="seat-owner">${escapeHtml(ownerShort)}</span>
+          `;
+        }
       }
 
       cell.tabIndex = 0;
@@ -1252,11 +1342,38 @@ function renderExcelPanel() {
   });
 
   if (filtered.length === 0) {
-    listEl.innerHTML = `
-      <div style="padding:24px 12px; text-align:center; color:#64748b; font-size:12px;">
-        <i class="ph ph-magnifying-glass" style="font-size:24px; display:block; margin-bottom:6px; opacity:0.6;"></i>
-        Eşleşen talep bulunamadı.
-      </div>`;
+    const hasSearchOrFilter = Boolean(excelSearchQuery || (excelBlockFilter && excelBlockFilter !== "ALL"));
+    if (hasSearchOrFilter) {
+      listEl.innerHTML = `
+        <div class="sidebar-empty-state">
+          <div class="empty-icon"><i class="ph ph-magnifying-glass"></i></div>
+          <h4 class="empty-title">Aramanızla Eşleşen Talep Yok</h4>
+          <p class="empty-desc">Filtre kriterlerinize uyan bilet talebi bulunamadı.</p>
+          <button type="button" class="btn btn-outline btn-xs btn-empty-clear" onclick="clearSearchFilter()">
+            <i class="ph ph-x"></i>
+            <span>Filtreleri Temizle</span>
+          </button>
+        </div>`;
+    } else if (isSentTab) {
+      listEl.innerHTML = `
+        <div class="sidebar-empty-state">
+          <div class="empty-icon"><i class="ph ph-paper-plane-tilt"></i></div>
+          <h4 class="empty-title">Henüz Gönderilen Bilet Yok</h4>
+          <p class="empty-desc">WhatsApp üzerinden biletleri iletilen talepler burada arşivlenir.</p>
+        </div>`;
+    } else {
+      listEl.innerHTML = `
+        <div class="sidebar-empty-state">
+          <div class="empty-icon"><i class="ph ph-ticket"></i></div>
+          <h4 class="empty-title">Henüz Bekleyen Talep Yok</h4>
+          <p class="empty-desc">Kulüp personeli ve davetlilerin talep girmesi için portal bağlantısını paylaşabilirsiniz:</p>
+          <button type="button" class="btn btn-primary btn-sm btn-empty-copy" onclick="copyPortalLink()">
+            <i class="ph ph-copy"></i>
+            <span>Portal Linkini Kopyala</span>
+          </button>
+          <div class="empty-url-hint">biletistiyorum.vercel.app</div>
+        </div>`;
+    }
     return;
   }
 
@@ -1695,6 +1812,7 @@ function bindUIEvents() {
           const isCollapsed = layout.classList.contains("sidebar-collapsed");
           btnToggleSidebar.classList.toggle("active", isCollapsed);
           showToast(isCollapsed ? "Yan panel gizlendi (Tam ekran koltuk planı)." : "Yan panel açıldı.");
+          setTimeout(autoFitSeatingGrid, 300);
         }
       }
     });
@@ -1757,7 +1875,20 @@ function bindUIEvents() {
     showToast("🔗 biletistiyorum.vercel.app bağlantısı kopyalandı! WhatsApp'ta personele gönderebilirsiniz.");
   };
   const btnCopyPUrl = document.getElementById("btnCopyPortalUrl");
-  if (btnCopyPUrl) btnCopyPUrl.addEventListener("click", copyVercelPortalUrl);
+  if (btnCopyPUrl) btnCopyPUrl.addEventListener("click", copyPortalLink);
+
+  const btnZOut = document.getElementById("btnZoomOut");
+  if (btnZOut) btnZOut.addEventListener("click", () => applyZoomLevel(currentZoomIndex - 1));
+
+  const btnZIn = document.getElementById("btnZoomIn");
+  if (btnZIn) btnZIn.addEventListener("click", () => applyZoomLevel(currentZoomIndex + 1));
+
+  const btnZFit = document.getElementById("btnZoomFit");
+  if (btnZFit) btnZFit.addEventListener("click", autoFitSeatingGrid);
+
+  window.addEventListener("resize", () => {
+    autoFitSeatingGrid();
+  });
   const btnCopyPUrlDisp = document.getElementById("btnCopyPortalUrlDispatch");
   if (btnCopyPUrlDisp) btnCopyPUrlDisp.addEventListener("click", copyVercelPortalUrl);
 

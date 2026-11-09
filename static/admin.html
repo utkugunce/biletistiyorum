@@ -223,9 +223,8 @@
   <div class="block-toolbar">
     <div class="toolbar-left">
       <span class="toolbar-label">Blok:</span>
-      <select id="selectQuickBlock" class="block-dropdown" title="30 Blok Arasından Seç"></select>
       <div id="activeBlocksPills" class="active-block-pills"></div>
-
+      <select id="selectQuickBlock" class="block-dropdown" title="Tüm Bloklar Listesi"></select>
     </div>
 
     <div class="toolbar-center">
@@ -247,6 +246,20 @@
         </button>
         <button class="mode-btn" data-mode="shift" id="modeBtnShift" title="Seçili koltukları başka koltuklara kaydırın veya takas edin">
           Kaydır / Takas
+        </button>
+      </div>
+
+      <!-- Koltuk Ölçekleme (Zoom / Ekrana Sığdır) -->
+      <div class="zoom-controls-group" title="Koltuk Planı Ölçeklendirme">
+        <button type="button" class="btn btn-outline btn-xs" id="btnZoomOut" title="Koltukları Küçült">
+          <i class="ph-bold ph-minus"></i>
+        </button>
+        <button type="button" class="btn btn-outline btn-xs" id="btnZoomFit" title="Koltuk Planını Ekrana Sığdır">
+          <i class="ph-bold ph-arrows-in-simple"></i>
+          <span id="zoomLevelLabel">Sığdır</span>
+        </button>
+        <button type="button" class="btn btn-outline btn-xs" id="btnZoomIn" title="Koltukları Büyüt">
+          <i class="ph-bold ph-plus"></i>
         </button>
       </div>
 
@@ -274,7 +287,7 @@
       <!-- KOLTUK IZGARASI ALANI (KAYDIRMA BUG'I DÜZELTİLMİŞ) -->
       <div class="canvas-wrapper" id="seatingStageWrapper">
         <div id="courtIndicatorTop" class="court-direction-bar court-bar-top hidden">
-          ▲ SAHA YÖNÜ (VOLEYBOL KORTU) ▲
+          ▲ SAHA YÖNÜ (VOLEYBOL KORTU) — Tribün 3. Sıradan Başlar ▲
         </div>
 
         <div class="canvas-middle-row" id="seatingStage">
@@ -294,7 +307,7 @@
         </div>
 
         <div id="courtIndicatorBottom" class="court-direction-bar court-bar-bottom hidden">
-          ▼ SAHA YÖNÜ (VOLEYBOL KORTU) ▼
+          ▼ SAHA YÖNÜ (VOLEYBOL KORTU) — Protokol / Saha İçi 1. ve 2. Sıra ▼
         </div>
       </div>
 
@@ -462,22 +475,28 @@
         </button>
       </div>
 
-      <!-- Sekme Butonları (Gelen Talepler vs Dağılım Özeti) -->
+      <!-- Sekme Butonları (Gelen Talepler vs Gönderilen Talepler vs Dağılım Özeti) -->
       <div class="sidebar-tabs-bar" role="tablist">
         <button class="sidebar-nav-tab active" id="tabBtnExcel" data-panel="excel" title="Atanmayı veya gönderilmeyi bekleyen talepler">
-          <i class="ph-bold ph-tray"></i>
+          <div class="sidebar-tab-top-row">
+            <i class="ph-bold ph-tray"></i>
+            <span class="tab-badge" id="badgeExcelPendingCount">0</span>
+          </div>
           <span class="sidebar-tab-label">Gelen Talepler</span>
-          <span class="tab-badge" id="badgeExcelPendingCount">0</span>
         </button>
         <button class="sidebar-nav-tab" id="tabBtnSent" data-panel="sent" title="WhatsApp üzerinden biletleri gönderilmiş talepler">
-          <i class="ph-bold ph-paper-plane-tilt"></i>
+          <div class="sidebar-tab-top-row">
+            <i class="ph-bold ph-paper-plane-tilt"></i>
+            <span class="tab-badge tab-badge-success" id="badgeExcelSentCount">0</span>
+          </div>
           <span class="sidebar-tab-label">Gönderilen Talepler</span>
-          <span class="tab-badge tab-badge-success" id="badgeExcelSentCount">0</span>
         </button>
         <button class="sidebar-nav-tab" id="tabBtnDistribution" data-panel="dist" title="Kişi ve grup bazlı koltuk dağılım listesi">
-          <i class="ph-bold ph-users-three"></i>
+          <div class="sidebar-tab-top-row">
+            <i class="ph-bold ph-users-three"></i>
+            <span class="tab-badge" id="badgeAssignedPeopleCount">0</span>
+          </div>
           <span class="sidebar-tab-label">Dağılım Özeti</span>
-          <span class="tab-badge" id="badgeAssignedPeopleCount">0</span>
         </button>
       </div>
 
@@ -494,19 +513,21 @@
           </button>
         </div>
 
-        <!-- Canlı Vercel Portal Linki ve Hızlı Kopyalama -->
+        <!-- Canlı Vercel Portal Linki ve Hızlı Kopyalama (Tam Görünür) -->
         <div class="portal-live-banner">
-          <div class="portal-live-info">
-            <span class="portal-live-badge"><i class="ph-bold ph-globe"></i> Canlı Portal</span>
-            <a href="https://biletistiyorum.vercel.app" target="_blank" class="portal-live-url" title="Kulüp Personeli Canlı Formunu Aç">
-              biletistiyorum.vercel.app
+          <div class="portal-live-header">
+            <span class="portal-live-badge"><i class="ph-bold ph-globe"></i> Canlı Talep Portalı</span>
+            <button class="btn btn-portal-copy btn-xs" id="btnCopyPortalUrl" title="Personelle WhatsApp'tan paylaşmak için linki kopyala">
+              <i class="ph-bold ph-copy"></i>
+              <span>Linki Kopyala</span>
+            </button>
+          </div>
+          <div class="portal-live-url-row">
+            <a href="https://biletistiyorum.vercel.app" target="_blank" class="portal-live-url" title="Kulüp Personeli Canlı Formunu Yeni Sekmede Aç">
+              <span>https://biletistiyorum.vercel.app</span>
               <i class="ph ph-arrow-square-out"></i>
             </a>
           </div>
-          <button class="btn btn-portal-copy btn-xs" id="btnCopyPortalUrl" title="Personelle WhatsApp'tan paylaşmak için linki kopyala">
-            <i class="ph ph-copy"></i>
-            <span>Kopyala</span>
-          </button>
         </div>
 
         <!-- Excel Hızlı Sayaçları -->
@@ -548,9 +569,9 @@
             <i class="ph-bold ph-lightning"></i>
             <span>Akıllı Eşleştir (Tümünü Ata)</span>
           </button>
-          <button class="btn btn-whatsapp btn-xs" id="btnSidebarOpenDispatch" title="WhatsApp Bilet Dağıtım Merkezi">
-            <i class="ph-bold ph-whatsapp-logo"></i>
-            <span>WhatsApp Dağıtım</span>
+          <button class="btn btn-whatsapp btn-xs" id="btnSidebarOpenDispatch" title="WhatsApp Bilet Dağıtım Merkezi (Hazır biletleri personele iletin)">
+            <i class="ph-bold ph-paper-plane-tilt"></i>
+            <span>Biletleri Gönder ➔</span>
           </button>
         </div>
 
