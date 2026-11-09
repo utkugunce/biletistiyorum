@@ -744,7 +744,7 @@ async def admin_auth_middleware(request: Request, call_next):
     # - Admin auth APIs: /api/auth/login, /api/auth/check
     # - CORS OPTIONS requests
     if (
-        path in ("/", "/index.html", "/favicon.ico", "/manifest.json", "/sw.js")
+        path in ("/", "/index.html", "/favicon.ico", "/manifest.json", "/sw.js", "/api/status")
         or path.startswith("/static")
         or path.startswith("/assets")
         or path.startswith("/icons")
@@ -2697,15 +2697,30 @@ def serve_index():
 
 
 def _auto_folder_sync_loop():
-    """Bulutta atanan biletleri her 5 sn'de yerel kisi klasorlerine ayirir."""
+    """Bulutta atanan biletleri periyodik olarak yerel kisi klasorlerine ayirir ve tum maclarin durumunu buluta bildirir."""
     import time
     from sync_helper import sync_cloud_assignments_to_folders
     while True:
         try:
-            sync_cloud_assignments_to_folders(state_mgr.active_folder)
+            folders_to_sync = []
+            if getattr(state_mgr, "active_folder", None) and state_mgr.active_folder.exists():
+                folders_to_sync.append(state_mgr.active_folder.resolve())
+
+            for m in state_mgr.storage.get("matches", []):
+                p_str = m.get("folder", "")
+                if p_str:
+                    p = Path(p_str)
+                    if p.exists() and p.resolve() not in folders_to_sync:
+                        folders_to_sync.append(p.resolve())
+
+            for f in folders_to_sync:
+                try:
+                    sync_cloud_assignments_to_folders(f)
+                except Exception as inner_e:
+                    print(f"sync error for {f.name}:", inner_e)
         except Exception as e:
             print("auto sync error:", e)
-        time.sleep(1.5)
+        time.sleep(2.0)
 
 
 if __name__ == "__main__":
