@@ -7,7 +7,7 @@ export default async function handler(req,res) {
     const root = await loadSystemState();
     res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300');
     return res.status(200).json(matchMetadata(root).map(match => ({ ...match,
-      blocks: Object.keys((root.match_templates?.[match.id] || getBaseData().base_state).blocks || {})
+      blocks: Object.keys((root.match_templates?.[match.id] || getBaseData().match_templates?.[match.id] || getBaseData().base_state).blocks || {})
     })));
   }
   catch(error) { return fail(res,error); }

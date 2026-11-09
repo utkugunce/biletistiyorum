@@ -1669,7 +1669,7 @@ def api_assign_seats(req: AssignRequest):
 @app.get("/api/excel/summary")
 def api_excel_summary(match_name: Optional[str] = None):
     # Excel bağımlılığı kaldırıldı - Talepler doğrudan Bilet İstiyorum Portalından yüklenir
-    active_mname = match_name or "Zeren Spor - Kuzeyboru"
+    active_mname = match_name or (state_mgr.storage.get("matches", [{}])[0].get("title") if state_mgr.storage.get("matches") else "Zeren Spor - Kuzeyboru")
     evaluated = []
 
     # Portal taleplerini (Bilet İstiyorum) yükle
@@ -1726,7 +1726,7 @@ def api_excel_summary(match_name: Optional[str] = None):
         "excel_path": "Bilet İstiyorum Portalı",
         "excel_exists": True,
         "active_match_name": active_mname,
-        "available_matches": ["Zeren Spor - Kuzeyboru"],
+        "available_matches": [m["title"] for m in state_mgr.storage.get("matches", [])] or ["Zeren Spor Kulübü – Eczacıbaşı", "Zeren Spor - Kuzeyboru"],
         "requests": all_evaluated,
         "total_requested": total_requested,
         "total_assigned": total_assigned,

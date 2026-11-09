@@ -46,7 +46,7 @@ export default async function handler(req, res) {
       const match = matchMetadata(state).find(m => m.id === body.match_id || m.title === input.match_name ||
         m.title.replace('Kulübü ', '') === input.match_name.replace('Kulübü ', ''));
       if (!match) throw new HttpError(400, 'Aktif bir maç seçiniz.');
-      const template = state.match_templates?.[match.id] || getBaseData().base_state;
+      const template = state.match_templates?.[match.id] || getBaseData().match_templates?.[match.id] || getBaseData().base_state;
       if (input.target_block && !Object.hasOwn(template.blocks || {}, input.target_block)) throw new HttpError(400, 'Bu maç için geçerli bir blok seçiniz.');
       const existing = state.request_operations?.[tokenHash(idempotency)];
       if (existing && existing.payload_hash !== payloadHash) throw new HttpError(409, 'Bu işlem anahtarı farklı bir talep için kullanılmış.');
