@@ -2443,9 +2443,18 @@ def api_portal_arena_data():
 @app.get("/api/portal/staff")
 def api_portal_staff():
     from portal_storage import STAFF_GROUPS, CLUB_STAFF_PRESETS
+    phonebook = {}
+    pb_file = DATA_DIR / "phonebook.json"
+    if pb_file.exists():
+        try:
+            with open(pb_file, "r", encoding="utf-8") as f:
+                phonebook = json.load(f)
+        except Exception:
+            pass
     return {
         "groups": STAFF_GROUPS,
         "staff": CLUB_STAFF_PRESETS,
+        "phones": phonebook,
     }
 
 
