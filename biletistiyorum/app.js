@@ -3092,6 +3092,99 @@ if ("serviceWorker" in navigator) {
 }
 
 
+// Arena Blok Kataloğu (PDF'i olan ve henüz yüklenmemiş tüm tribün blokları)
+const ARENA_BLOCKS_CATALOG = [
+  // Güney Alt Tribün
+  { id: "121", label: "121 Blok (Protokol Yanı)" },
+  { id: "102", label: "102 Blok (Güney Alt)" },
+  { id: "103", label: "103 Blok (Güney Alt)" },
+  { id: "104", label: "104 Blok (Güney Alt)" },
+  { id: "120", label: "120 Blok (Güney Alt)" },
+  { id: "SAHA", label: "Saha İçi VIP (Protokol)" },
+  // Doğu Alt & Üst
+  { id: "105", label: "105 Blok (Doğu Alt)" },
+  { id: "106", label: "106 Blok (Altyapı & Aile)" },
+  { id: "203", label: "203 Blok (Doğu Üst)" },
+  { id: "204", label: "204 Blok (Doğu Üst)" },
+  { id: "205", label: "205 Blok (Doğu Üst)" },
+  // Kuzey Alt
+  { id: "108", label: "108 Blok (Kuzey Alt)" },
+  { id: "109", label: "109 Blok (Kuzey Alt)" },
+  { id: "110", label: "110 Blok (Kuzey Alt)" },
+  { id: "111", label: "111 Blok (Kuzey Alt)" },
+  { id: "112", label: "112 Blok (Kuzey Alt)" },
+  { id: "113", label: "113 Blok (Kuzey Alt)" },
+  { id: "114", label: "114 Blok (Kuzey Alt)" },
+  // Kuzey Üst
+  { id: "206", label: "206 Blok (Kuzey Üst)" },
+  { id: "207", label: "207 Blok (Kuzey Üst)" },
+  { id: "208", label: "208 Blok (Kuzey Üst)" },
+  { id: "209", label: "209 Blok (Kuzey Üst)" },
+  { id: "210", label: "210 Blok (Kuzey Üst)" },
+  { id: "211", label: "211 Blok (Kuzey Üst)" },
+  { id: "212", label: "212 Blok (Kuzey Üst)" },
+  { id: "213", label: "213 Blok (Kuzey Üst)" },
+  // Batı Alt & Üst
+  { id: "117", label: "117 Blok (Batı Alt)" },
+  { id: "118", label: "118 Blok (Batı Alt)" },
+  { id: "214", label: "214 Blok (Batı Üst)" },
+  { id: "215", label: "215 Blok (Batı Üst)" },
+  { id: "216", label: "216 Blok (Batı Üst)" }
+];
+
+function populateEditBlockDropdown() {
+  const blockSel = document.getElementById("editReqBlock");
+  if (!blockSel) return;
+
+  const withPdf = [];
+  const withoutPdf = [];
+  const blocksObj = appState && appState.blocks ? appState.blocks : {};
+
+  ARENA_BLOCKS_CATALOG.forEach(b => {
+    const bState = blocksObj[b.id];
+    const ticketCount = bState ? (bState.total_pdfs || bState.total_active || 0) : 0;
+    if (ticketCount > 0) {
+      withPdf.push({ id: b.id, label: `${b.label} (${ticketCount} Bilet Mevcut)` });
+    } else {
+      withoutPdf.push(b);
+    }
+  });
+
+  Object.keys(blocksObj).forEach(bId => {
+    if (!ARENA_BLOCKS_CATALOG.some(c => c.id === bId)) {
+      const bState = blocksObj[bId];
+      const count = bState ? (bState.total_pdfs || bState.total_active || 0) : 0;
+      const item = { id: bId, label: `${bId} Blok` + (count > 0 ? ` (${count} Bilet Mevcut)` : "") };
+      if (count > 0) withPdf.push(item);
+      else withoutPdf.push(item);
+    }
+  });
+
+  blockSel.innerHTML = "";
+
+  if (withPdf.length > 0) {
+    const grp = document.createElement("optgroup");
+    grp.label = "Bilet / PDF Yüklü Bloklar";
+    withPdf.forEach(b => {
+      const opt = document.createElement("option");
+      opt.value = b.id;
+      opt.textContent = b.label;
+      grp.appendChild(opt);
+    });
+    blockSel.appendChild(grp);
+  }
+
+  const grpOther = document.createElement("optgroup");
+  grpOther.label = withPdf.length > 0 ? "PDF'i Olmayan / Diğer Salon Blokları" : "Tüm Salon Blokları";
+  withoutPdf.forEach(b => {
+    const opt = document.createElement("option");
+    opt.value = b.id;
+    opt.textContent = b.label;
+    grpOther.appendChild(opt);
+  });
+  blockSel.appendChild(grpOther);
+}
+
 // Modal: Talebi Düzenle & Yatay Scroll Destekleri
 function openEditRequestModal(r) {
   if (!r) return;
@@ -3102,14 +3195,39 @@ function openEditRequestModal(r) {
   document.getElementById("editReqDept").value = r.department || "";
   document.getElementById("editReqCount").value = r.requested_count || 1;
 
+  populateEditBlockDropdown();
+
   const blockSel = document.getElementById("editReqBlock");
   if (blockSel) {
-    let b = String(r.target_block || "102").toUpperCase().trim();
-    if (b.includes("SAHA")) b = "SAHA";
-    else if (b.includes("121")) b = "121";
-    else if (b.includes("102")) b = "102";
+    let raw = String(r.target_block || "102").trim();
+    let b = raw;
+    if (/saha/i.test(raw)) {
+      b = "SAHA";
+    } else {
+      const m = raw.match(/\d+/);
+      if (m) b = m[0];
+    }
+
+    let found = Array.from(blockSel.options).some(opt => opt.value === b);
+    if (!found && b) {
+      const opt = document.createElement("option");
+      opt.value = b;
+      opt.textContent = `${b} Blok`;
+      blockSel.appendChild(opt);
+    }
     blockSel.value = b;
   }
+
+  const hintEl = document.getElementById("editReqBlockHint");
+  if (hintEl) {
+    const assigned = r.assigned_count || (r.matched_seats ? r.matched_seats.length : 0);
+    if (assigned > 0) {
+      hintEl.textContent = `⚠️ Bu talebe ait ${assigned} koltuk atanmıştır. Bloğu değiştirmeden önce atamaları kaldırmalısınız.`;
+    } else {
+      hintEl.textContent = "";
+    }
+  }
+
   document.getElementById("editReqDesc").value = r.description || "";
   document.getElementById("editRequestModalBackdrop").classList.remove("hidden");
 }
