@@ -78,21 +78,7 @@ export default function handler(req, res) {
         ]
       }
     ],
-    staff: [],
-    phones: {
-      "Eşref Arıcan": "0533 233 43 45",
-      "Ayşe Fidan": "0536 476 97 31",
-      "Neslihan Erşahin": "0533 680 17 87",
-      "Ömer Özdemir": "0533 527 86 96",
-      "Tansu Ünal": "0534 291 26 72",
-      "Aysu Balcı": "0542 433 90 57",
-      "Çağlar Oskay": "0532 548 99 11",
-      "Ahmet Salih Canbaz": "0546 464 06 12",
-      "Seda Canlı": "+1 (609) 724-5092",
-      "Burak Eser": "0554 646 59 58",
-      "Kerem Taha Solmaz": "0507 634 78 75",
-      "Mehmet Antep": "0538 356 24 40"
-    }
+    staff: []
   };
 
   return res.status(200).json(data);

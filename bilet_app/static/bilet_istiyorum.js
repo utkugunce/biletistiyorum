@@ -8,21 +8,6 @@ let portalStaff = [];
 let selectedMatch = null;
 let currentTab = "tab-request";
 
-const FALLBACK_PHONEBOOK = {
-  "Eşref Arıcan": "0533 233 43 45",
-  "Ayşe Fidan": "0536 476 97 31",
-  "Neslihan Erşahin": "0533 680 17 87",
-  "Ömer Özdemir": "0533 527 86 96",
-  "Tansu Ünal": "0534 291 26 72",
-  "Aysu Balcı": "0542 433 90 57",
-  "Çağlar Oskay": "0532 548 99 11",
-  "Ahmet Salih Canbaz": "0546 464 06 12",
-  "Seda Canlı": "+1 (609) 724-5092",
-  "Burak Eser": "0554 646 59 58",
-  "Kerem Taha Solmaz": "0507 634 78 75",
-  "Mehmet Antep": "0538 356 24 40",
-};
-
 function normalizePersonName(str) {
   return String(str || "")
     .toLocaleLowerCase("tr")
@@ -56,7 +41,7 @@ function lookupPhoneForPerson(personName) {
   const targetNorm = normalizePersonName(personName);
   if (!targetNorm) return "";
 
-  // 1. Cihazdaki yerel önbellek
+  // 1. Cihazdaki yerel önbellek (Bu cihazda daha önce girilen numara)
   const localCache = getLocalPhoneCache();
   if (localCache[targetNorm]) {
     return localCache[targetNorm];
@@ -69,27 +54,10 @@ function lookupPhoneForPerson(personName) {
     return lastPhone;
   }
 
-  // 3. API'den gelen telefon rehberi (portalStaff.phones)
-  const apiPhones = (portalStaff && portalStaff.phones) || {};
-  for (const [k, v] of Object.entries(apiPhones)) {
-    if (normalizePersonName(k) === targetNorm && v) {
-      return String(v).trim();
-    }
-  }
-
-  // 4. İstemci gömülü yedek rehber (FALLBACK_PHONEBOOK)
-  for (const [k, v] of Object.entries(FALLBACK_PHONEBOOK)) {
-    if (normalizePersonName(k) === targetNorm && v) {
-      return String(v).trim();
-    }
-  }
-
-  // 5. Kısmi eşleşme (örn. 'tansu' veya 'esref' yazıldığında)
+  // 3. Kısmi eşleşme (kullanıcının kendi yerel cihazında)
   if (targetNorm.length >= 3) {
-    const merged = { ...FALLBACK_PHONEBOOK, ...apiPhones, ...localCache };
-    for (const [k, v] of Object.entries(merged)) {
-      const kNorm = normalizePersonName(k);
-      if ((kNorm.startsWith(targetNorm) || targetNorm.startsWith(kNorm)) && v) {
+    for (const [k, v] of Object.entries(localCache)) {
+      if ((k.startsWith(targetNorm) || targetNorm.startsWith(k)) && v) {
         return String(v).trim();
       }
     }
