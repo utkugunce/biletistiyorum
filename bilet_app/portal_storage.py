@@ -421,7 +421,7 @@ def set_request_whatsapp_sent(request_id: str, sent: bool = True) -> Optional[Di
 
 def update_portal_request(request_id: str, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     requests = load_portal_requests()
-    target_req = next((r for r in requests if r.get("id") == request_id), None)
+    target_req = next((r for r in requests if r.get("id") == request_id or r.get("request_id") == request_id), None)
     if not target_req:
         return None
     for k in ["person", "phone", "department", "target_block", "description"]:

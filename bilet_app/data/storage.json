@@ -332,25 +332,10 @@
       "excel_match_name": "Beşiktaş"
     }
   ],
-  "admin_password": "zeren2026",
-  "admin_tokens": [
-    "671a0132ff60cc82a1b3d0106378dd0481f10701c5c84384",
-    "db10ec10d83e4990d85dc39c3c7a58aa7379f20cf46b199f",
-    "4fb2cce2608bc5cbcb47e03157c615b1da05aaf437f470d3",
-    "57e0f84b504442abe8c00875f08c62f9230cd7bd0cf36c9a",
-    "497408d76ea0c73abf6eba161251a2ea1a841d1a2ec6be59",
-    "e56e54c5d8655a794b97a4e54ee91f7bfa81b02585c15b42",
-    "4c74fb7cf14b7d2f74d95d9a0a4b9ea42f2aaaca60530a58",
-    "507fa3b349fcacc7dbdcfbf802b39f89975e9980e015ab13",
-    "8f1b26d6fa69fa5a6eb3c87091dd87ea36a9d074a055a313",
-    "112bc9897a91abe7e588d5365181bd8ef871798441e2f7a8",
-    "0185ff83460db195d9986826846e4982ad0486c75a2646be",
-    "ed75d716957ac18beac9638e86b914941142398cc3c727a3",
-    "98cbbe401454378ea3a6fe7e8b7961f217b37d63febf3742",
-    "ac691f050b3b489ec61c5e2b192b719e6a2e125c0f300ccc",
-    "1e9fdd2b843474d15ab357cf4f89465274571fcf94345a39",
-    "3937a9e98d02f550659a4b1ea678e42bf9f77ab1720a6aae"
-  ],
+  "admin_tokens": {
+    "d4d2da8d5cc588286e292aa1b91ab91afd0511073feeb0e4218a1fd4459e0d73": 1794914315.2893748,
+    "6ed2958e2c9f0d6e8c30cd96851d56c1a631e3ce68e6b63ac68ab2cad1405971": 1794914561.531215
+  },
   "phonebook": {
     "Eşref Arıcan": "+90 533 233 43 45",
     "Ayşe Fidan": "+90 536 476 97 31",
@@ -364,5 +349,7 @@
     "Burak Eser": "+90 554 646 59 58",
     "Kerem Taha Solmaz": "+90 507 634 78 75",
     "Mehmet Antep": "+90 538 356 24 40"
-  }
+  },
+  "login_attempts": {},
+  "admin_password_hash": "7906b8926401a7d639fdefe3fc76e821:1b39ed67298b7929f233b1b1b10a9c70ee9bb4e1eb863fc38fb1a0632d634d2904895de0d773388e7b4f39c4b60dd2b5a3c61cc471a3c480ed64aaa01335d9a2"
 }

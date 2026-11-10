@@ -1452,13 +1452,13 @@ function renderExcelPanel() {
             : ""
         }
 
+        <button class="excel-action-btn" data-act="edit-portal" title="Bu talebi düzenle">
+          <i class="ph ph-pencil-simple"></i>
+          <span>Düzenle</span>
+        </button>
         ${
           isPortal
-            ? `<button class="excel-action-btn" data-act="edit-portal" title="Bu talebi düzenle">
-                 <i class="ph ph-pencil-simple"></i>
-                 <span>Düzenle</span>
-               </button>
-               <button class="excel-action-btn excel-action-btn-danger" data-act="delete-portal" title="Bu talebi sil">
+            ? `<button class="excel-action-btn excel-action-btn-danger" data-act="delete-portal" title="Bu talebi sil">
                  <i class="ph ph-trash"></i>
                  <span>Sil</span>
                </button>`
@@ -3070,26 +3070,41 @@ if ("serviceWorker" in navigator) {
 
 // Modal: Talebi Düzenle & Yatay Scroll Destekleri
 function openEditRequestModal(r) {
-  document.getElementById("editReqId").value = r.request_id || "";
+  if (!r) return;
+  const reqId = r.request_id || r.id || "";
+  document.getElementById("editReqId").value = reqId;
   document.getElementById("editReqPerson").value = r.person || "";
   document.getElementById("editReqPhone").value = r.phone || "";
   document.getElementById("editReqDept").value = r.department || "";
   document.getElementById("editReqCount").value = r.requested_count || 1;
+
   const blockSel = document.getElementById("editReqBlock");
   if (blockSel) {
-    let b = String(r.target_block || "102").toUpperCase();
+    let b = String(r.target_block || "102").toUpperCase().trim();
     if (b.includes("SAHA")) b = "SAHA";
+    else if (b.includes("121")) b = "121";
+    else if (b.includes("102")) b = "102";
     blockSel.value = b;
   }
   document.getElementById("editReqDesc").value = r.description || "";
   document.getElementById("editRequestModalBackdrop").classList.remove("hidden");
 }
+window.openEditRequestModal = openEditRequestModal;
 
-async function handleEditRequestSubmit() {
+async function handleEditRequestSubmit(e) {
+  if (e && e.preventDefault) e.preventDefault();
   const reqId = document.getElementById("editReqId").value;
-  if (!reqId) return;
+  if (!reqId) {
+    showToast("❌ Düzenlenecek talep kimliği bulunamadı.");
+    return;
+  }
+  const person = document.getElementById("editReqPerson").value.trim();
+  if (!person) {
+    showToast("❌ Personel Adı Soyadı zorunludur.");
+    return;
+  }
   const payload = {
-    person: document.getElementById("editReqPerson").value.trim(),
+    person: person,
     phone: document.getElementById("editReqPhone").value.trim(),
     department: document.getElementById("editReqDept").value.trim(),
     requested_count: parseInt(document.getElementById("editReqCount").value, 10) || 1,
@@ -3103,30 +3118,29 @@ async function handleEditRequestSubmit() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     });
-    if (res.ok) {
-      showToast("Talep başarıyla güncellendi.");
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && (data.ok || data.success)) {
+      showToast("✅ Talep başarıyla güncellendi.");
       document.getElementById("editRequestModalBackdrop").classList.add("hidden");
-      fetchExcelSummary();
-      fetchState(false);
+      await fetchExcelSummary();
+      await fetchState(false);
     } else {
-      showToast("Talep güncellenemedi.");
+      showToast("❌ " + (data.detail || data.error || "Talep güncellenemedi."));
     }
   } catch (err) {
-    showToast("Hata: " + err.message);
+    showToast("❌ Hata: " + err.message);
   }
 }
+window.handleEditRequestSubmit = handleEditRequestSubmit;
 
 function setupHorizontalScroll() {
-  [].forEach((cls) => {
-    const el = document.querySelector("." + cls);
-    if (!el) return;
-    el.addEventListener("wheel", (e) => {
-      if (e.deltaY !== 0) {
-        e.preventDefault();
-        el.scrollLeft += e.deltaY;
-      }
-    }, { passive: false });
-  });
+  const formEdit = document.getElementById("formEditRequest");
+  if (formEdit) {
+    formEdit.onsubmit = (e) => {
+      e.preventDefault();
+      handleEditRequestSubmit(e);
+    };
+  }
 
   const btnCloseEdit = document.getElementById("btnCloseEditRequestModal");
   if (btnCloseEdit) btnCloseEdit.addEventListener("click", () => {
@@ -3136,4 +3150,11 @@ function setupHorizontalScroll() {
   if (btnCancelEdit) btnCancelEdit.addEventListener("click", () => {
     document.getElementById("editRequestModalBackdrop").classList.add("hidden");
   });
+
+  const backdrop = document.getElementById("editRequestModalBackdrop");
+  if (backdrop) {
+    backdrop.addEventListener("click", (e) => {
+      if (e.target === backdrop) backdrop.classList.add("hidden");
+    });
+  }
 }

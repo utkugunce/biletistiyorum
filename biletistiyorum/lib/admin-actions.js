@@ -3,7 +3,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { database, saveSystemState, mutateSystemState, HttpError, DEFAULT_MATCH_ID, matchMetadata, matchState, requestMatch, assignedKeys, tokenHash } from './store.js';
 
-const blockId = value => /saha/i.test(String(value)) ? 'SAHA' : String(value || '102');
+const blockId = value => {
+  const s = String(value || '102').trim();
+  if (/saha/i.test(s)) return 'SAHA';
+  const m = s.match(/\d+/);
+  return m ? m[0] : s;
+};
 function method(req, expected) { if (req.method !== expected) throw new HttpError(405, `${expected} yöntemi gerekli.`); }
 
 async function requests(root, id) {
@@ -312,7 +317,7 @@ export async function handleCompanion(req, res, route) {
     method(req, 'POST');
     const allowed = new Set(['/api/state', '/api/excel/summary', '/api/excel/reload', '/api/assign', '/api/shift', '/api/groups/unassign', '/api/excel/assign-request', '/api/matches/auto-assign-all', '/api/dispatch/list', '/api/dispatch/mark-sent', '/api/dispatch/save-phone']);
     const target = String(body.path || '');
-    if (!allowed.has(target) && !/^\/api\/portal\/request\/[A-Za-z0-9_-]+\/(delete|update|tracking-link)$/.test(target)) throw new HttpError(403, 'Bu işlem companion köprüsüne açık değil.');
+    if (!allowed.has(target) && !/^\/api\/portal\/request\/[A-Za-z0-9_.-]+\/(delete|update|tracking-link)$/.test(target)) throw new HttpError(403, 'Bu işlem companion köprüsüne açık değil.');
     const helpers = await import('../api/admin.js');
     const { loadSystemState } = await import('./store.js');
     for (let attempt = 0; attempt < 5; attempt++) {

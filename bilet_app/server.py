@@ -778,7 +778,7 @@ async def admin_auth_middleware(request: Request, call_next):
         "/api/groups/unassign", "/api/excel/assign-request", "/api/matches/auto-assign-all",
         "/api/dispatch/list", "/api/dispatch/mark-sent", "/api/dispatch/save-phone",
     }
-    cloud_request = bool(re.fullmatch(r"/api/portal/request/[A-Za-z0-9_-]+/(delete|update|tracking-link)", path))
+    cloud_request = bool(re.fullmatch(r"/api/portal/request/[A-Za-z0-9_.-]+/(delete|update|tracking-link)", path))
     if os.environ.get("ZEREN_COMPANION_TOKEN") and (path in cloud_paths or cloud_request):
         from cloud_bridge import call as cloud_call, match_id_for
         try:
@@ -2612,6 +2612,18 @@ def api_unassign_group(payload: UnassignGroupPayload):
 def api_portal_update_request(request_id: str, payload: Dict[str, Any]):
     from portal_storage import update_portal_request
     res = update_portal_request(request_id, payload)
+    new_person = payload.get("person", "").strip() if isinstance(payload, dict) else ""
+    if new_person:
+        folder = state_mgr.active_folder
+        plan_data = load_match_plan(folder)
+        virtual_map = plan_data.setdefault("virtual_assignments", {})
+        changed = False
+        for seat_key, owner in virtual_map.items():
+            if owner.get("request_id") == request_id or (res and owner.get("request_id") == res.get("id")):
+                owner["group"] = new_person
+                changed = True
+        if changed:
+            save_match_plan(folder, plan_data)
     return {"success": True, "ok": True, "request": res}
 
 
