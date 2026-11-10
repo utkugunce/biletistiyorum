@@ -478,70 +478,55 @@
       <!-- Sekme Butonları (Gelen Talepler vs Gönderilen Talepler vs Dağılım Özeti) -->
       <div class="sidebar-tabs-bar" role="tablist">
         <button class="sidebar-nav-tab active" id="tabBtnExcel" data-panel="excel" title="Atanmayı veya gönderilmeyi bekleyen talepler">
-          <div class="sidebar-tab-top-row">
-            <i class="ph-bold ph-tray"></i>
-            <span class="tab-badge" id="badgeExcelPendingCount">0</span>
-          </div>
+          <i class="ph-bold ph-tray"></i>
           <span class="sidebar-tab-label">Gelen Talepler</span>
+          <span class="tab-badge" id="badgeExcelPendingCount">0</span>
         </button>
         <button class="sidebar-nav-tab" id="tabBtnSent" data-panel="sent" title="WhatsApp üzerinden biletleri gönderilmiş talepler">
-          <div class="sidebar-tab-top-row">
-            <i class="ph-bold ph-paper-plane-tilt"></i>
-            <span class="tab-badge tab-badge-success" id="badgeExcelSentCount">0</span>
-          </div>
-          <span class="sidebar-tab-label">Gönderilen Talepler</span>
+          <i class="ph-bold ph-paper-plane-tilt"></i>
+          <span class="sidebar-tab-label">Gönderilen</span>
+          <span class="tab-badge tab-badge-success" id="badgeExcelSentCount">0</span>
         </button>
         <button class="sidebar-nav-tab" id="tabBtnDistribution" data-panel="dist" title="Kişi ve grup bazlı koltuk dağılım listesi">
-          <div class="sidebar-tab-top-row">
-            <i class="ph-bold ph-users-three"></i>
-            <span class="tab-badge" id="badgeAssignedPeopleCount">0</span>
-          </div>
-          <span class="sidebar-tab-label">Dağılım Özeti</span>
+          <i class="ph-bold ph-users-three"></i>
+          <span class="sidebar-tab-label">Dağılım</span>
+          <span class="tab-badge" id="badgeAssignedPeopleCount">0</span>
         </button>
       </div>
 
       <!-- PANEL 1: CANLI TALEP VE EXCEL TAKİBİ -->
       <div class="sidebar-panel-view" id="panelExcel">
-        <div class="excel-panel-header">
-          <div class="excel-file-status" title="Davetiye Excel ve Bilet İstiyorum Portalı Canlı Bağlantısı">
-            <span class="pulse-dot"></span>
-            <span class="excel-status-title">Bilet İstiyorum Portalı (Canlı)</span>
+        <!-- Canlı Vercel Portal ve Yenileme Çubuğu (Kompakt Tek Satır) -->
+        <div class="portal-compact-bar">
+          <div class="portal-compact-left">
+            <span class="pulse-dot" title="Sistem Canlı Bağlantıda"></span>
+            <a href="https://biletistiyorum.vercel.app" target="_blank" class="portal-compact-url" title="Canlı Portal Formunu Yeni Sekmede Aç">
+              <span>biletistiyorum.vercel.app</span>
+              <i class="ph ph-arrow-square-out"></i>
+            </a>
+            <button class="btn-copy-chip" id="btnCopyPortalUrl" title="Personelle paylaşmak için portal linkini kopyala">
+              <i class="ph-bold ph-copy"></i>
+              <span>Kopyala</span>
+            </button>
           </div>
-          <button class="btn btn-outline btn-xs" id="btnSyncExcel" title="Talepleri ve Excel'i yeniden tara">
+          <button class="btn btn-outline btn-xs btn-sync-compact" id="btnSyncExcel" title="Talepleri ve durumu yeniden tara">
             <i class="ph ph-arrows-clockwise"></i>
             <span>Yenile</span>
           </button>
         </div>
 
-        <!-- Canlı Vercel Portal Linki ve Hızlı Kopyalama (Tam Görünür) -->
-        <div class="portal-live-banner">
-          <div class="portal-live-header">
-            <span class="portal-live-badge"><i class="ph-bold ph-globe"></i> Canlı Talep Portalı</span>
-            <button class="btn btn-portal-copy btn-xs" id="btnCopyPortalUrl" title="Personelle WhatsApp'tan paylaşmak için linki kopyala">
-              <i class="ph-bold ph-copy"></i>
-              <span>Linki Kopyala</span>
-            </button>
-          </div>
-          <div class="portal-live-url-row">
-            <a href="https://biletistiyorum.vercel.app" target="_blank" class="portal-live-url" title="Kulüp Personeli Canlı Formunu Yeni Sekmede Aç">
-              <span>https://biletistiyorum.vercel.app</span>
-              <i class="ph ph-arrow-square-out"></i>
-            </a>
-          </div>
-        </div>
-
-        <!-- Excel Hızlı Sayaçları -->
+        <!-- Excel Hızlı Sayaçları (Kompakt 3'lü Strip) -->
         <div class="excel-quick-stats">
           <div class="excel-stat-box">
-            <span class="stat-label">Toplam Talep</span>
+            <span class="stat-label">Toplam</span>
             <span class="stat-val" id="excelStatRequested">0</span>
           </div>
           <div class="excel-stat-box">
-            <span class="stat-label">Atanan Koltuk</span>
+            <span class="stat-label">Atanan</span>
             <span class="stat-val stat-val-green" id="excelStatAssigned">0</span>
           </div>
           <div class="excel-stat-box">
-            <span class="stat-label">Kalan / Bekleyen</span>
+            <span class="stat-label">Bekleyen</span>
             <span class="stat-val stat-val-amber" id="excelStatPending">0</span>
           </div>
         </div>
@@ -550,14 +535,13 @@
         <div class="excel-filter-row">
           <select id="selectExcelBlockFilter" class="clean-select-xs" title="Talepleri Filtrele">
             <option value="ALL">Tüm Talepler</option>
-            
           </select>
           <div class="sidebar-search-box" style="flex:1;">
             <i class="ph ph-magnifying-glass search-ico"></i>
             <input
               type="text"
               id="inputSearchExcel"
-              placeholder="Personel veya talep no ara..."
+              placeholder="Personel veya talep ara..."
               class="sidebar-search-input"
             />
           </div>
@@ -567,7 +551,7 @@
         <div class="excel-quick-bar">
           <button class="btn btn-primary btn-xs" id="btnAutoAssignAll" title="Bekleyen tüm talepleri mevcut boş koltuklarla otomatik eşleştir">
             <i class="ph-bold ph-lightning"></i>
-            <span>Akıllı Eşleştir (Tümünü Ata)</span>
+            <span>Akıllı Eşleştir</span>
           </button>
           <button class="btn btn-whatsapp btn-xs" id="btnSidebarOpenDispatch" title="WhatsApp Bilet Dağıtım Merkezi (Hazır biletleri personele iletin)">
             <i class="ph-bold ph-paper-plane-tilt"></i>

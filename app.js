@@ -1377,6 +1377,18 @@ function renderExcelPanel() {
     return;
   }
 
+function formatShortRequestId(id) {
+  if (!id) return "ZS";
+  const s = String(id).trim();
+  if (s.startsWith("ZS-") && s.length > 12) {
+    return "#" + s.slice(3, 11);
+  }
+  if (s.length > 14) {
+    return s.slice(0, 10) + "…";
+  }
+  return s;
+}
+
   filtered.forEach((r) => {
     const card = document.createElement("div");
     card.className = `excel-req-card ${r.fulfillment_status}${r.source === "portal" ? " portal-req-card" : ""}`;
@@ -1384,39 +1396,69 @@ function renderExcelPanel() {
     const isComp = r.fulfillment_status === "completed";
     const isCurrentBlock = r.target_block === currentBlockId;
     const isPortal = r.source === "portal";
+    const shortId = formatShortRequestId(r.request_id);
+    const fullId = r.request_id || "ZS-000";
+    const pendingSeats = Math.max(0, r.requested_count - r.assigned_count);
 
     card.innerHTML = `
-      <div class="excel-card-top">
-        <div class="excel-card-person-info">
-          <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-            <span class="req-id-badge">${escapeHtml(r.request_id || "ZS-000")}</span>
-            <span class="excel-card-name">${escapeHtml(r.person)}</span>
-            ${isPortal ? `<span class="portal-source-badge"><i class="ph ph-globe"></i> PORTAL</span>` : ""}
-          </div>
-          <div class="excel-card-metrics-line">
-            <strong>${r.requested_count}</strong> istendi · <strong style="color:${r.assigned_count > 0 ? '#059669' : '#64748b'}">${r.assigned_count}</strong> ayrıldı · <strong style="color:${Math.max(0, r.requested_count - r.assigned_count) > 0 ? '#d97706' : '#059669'}">${Math.max(0, r.requested_count - r.assigned_count)}</strong> eksik
-          </div>
-          ${r.description ? `<span class="excel-card-sub">${escapeHtml(r.description)}</span>` : ""}
-          ${r.phone ? `<span style="font-size:11px; color:#7e22ce; font-weight:700; margin-top:2px;"><i class="ph ph-phone"></i> ${escapeHtml(r.phone)}</span>` : ""}
+      <div class="excel-card-header">
+        <div class="card-name-wrap">
+          <span class="excel-card-name" title="${escapeHtml(r.person)}">${escapeHtml(r.person)}</span>
+          ${isPortal ? `<span class="portal-source-badge" title="Canlı Portal Talebi"><i class="ph-bold ph-globe"></i> Portal</span>` : ""}
         </div>
-        <div style="display:flex; align-items:center; gap:5px;">
-          <span class="excel-block-badge">${escapeHtml(r.target_block || "121")} Blok</span>
+        <span class="excel-block-badge">${escapeHtml(r.target_block || "121")} Blok</span>
+      </div>
+
+      <div class="excel-card-subline">
+        <span class="req-id-badge" title="${escapeHtml(fullId)} (Kopyalamak için tıklayın)" onclick="navigator.clipboard.writeText('${escapeHtml(fullId)}'); if(window.showToast) window.showToast('Talep no kopyalandı.');">${escapeHtml(shortId)}</span>
+        ${r.department ? `<span class="excel-card-dept">${escapeHtml(r.department)}</span>` : ""}
+        ${r.phone ? `<a href="tel:${escapeHtml(r.phone)}" class="excel-card-phone" title="Telefonu Ara"><i class="ph-bold ph-phone"></i> ${escapeHtml(r.phone)}</a>` : ""}
+      </div>
+
+      ${r.description ? `<div class="excel-card-notes" title="${escapeHtml(r.description)}"><i class="ph ph-chat-text"></i> ${escapeHtml(r.description)}</div>` : ""}
+
+      <div class="excel-card-metrics">
+        <div class="metric-chips">
+          <span class="m-chip"><strong>${r.requested_count}</strong> istendi</span>
+          <span class="m-chip ${r.assigned_count > 0 ? 'm-chip-assigned' : ''}"><strong>${r.assigned_count}</strong> ayrıldı</span>
+          ${pendingSeats > 0 ? `<span class="m-chip m-chip-missing"><strong>${pendingSeats}</strong> eksik</span>` : `<span class="m-chip m-chip-done">✓ Tam</span>`}
+        </div>
+        <div class="status-chip-text" style="color:${r.status_color}; font-weight:700; font-size:11px;">
+          ${r.status_badge}
         </div>
       </div>
 
-      <div class="excel-progress-wrap">
-        <div class="excel-progress-meta">
-          <span style="color:${r.status_color}; font-weight:700;">${r.status_badge}</span>
-          <span style="color:#64748b;">${r.assigned_count} / ${r.requested_count} Adet</span>
-        </div>
-        <div class="excel-progress-track">
-          <div class="excel-progress-fill" style="width:${r.progress_pct}%; background-color:${r.status_color};"></div>
-        </div>
+      <div class="excel-progress-track">
+        <div class="excel-progress-fill" style="width:${r.progress_pct}%; background-color:${r.status_color};"></div>
       </div>
 
       <div class="excel-card-actions">
-        <button class="excel-action-btn" data-act="tracking" title="Yeni bağlantı önceki takip bağlantısını geçersizleştirir">Yeni takip bağlantısı</button>
-        ${isComp ? `<button class="excel-action-btn" data-act="mark-sent">${r.whatsapp_sent ? "Gönderim işaretini kaldır" : "Gönderildi olarak işaretle"}</button>` : ""}
+        ${
+          !isComp
+            ? `<button class="excel-action-btn excel-action-btn-primary" data-act="assign" title="Bu talebe koltuk ata">
+                 <i class="ph-bold ph-check-circle"></i>
+                 <span>${selectedSeats.size > 0 ? `Seçiliyi Ata (${selectedSeats.size})` : `Koltuk Ata (${pendingSeats})`}</span>
+               </button>`
+            : ""
+        }
+
+        ${
+          r.matched_seats && r.matched_seats.length > 0
+            ? `<button class="excel-action-btn excel-action-btn-view" data-act="highlight" title="Atanan koltukları göster">
+                 <i class="ph-bold ph-eye"></i>
+                 <span>Koltuklar (${r.matched_seats.length})</span>
+               </button>
+               <button class="excel-action-btn excel-action-btn-whatsapp" data-act="whatsapp" title="WhatsApp ile bilet gönder">
+                 <i class="ph-bold ph-whatsapp-logo"></i>
+                 <span>WhatsApp</span>
+               </button>
+               <button class="excel-action-btn excel-action-btn-danger" data-act="unassign-req" title="Atanan koltukları boşa çıkar">
+                 <i class="ph-bold ph-x-circle"></i>
+                 <span>Kaldır</span>
+               </button>`
+            : ""
+        }
+
         ${
           r.target_block && r.target_block !== currentBlockId && appState.blocks && appState.blocks[r.target_block]
             ? `<button class="excel-action-btn" data-act="jump" title="${r.target_block} bloğuna git">
@@ -1426,40 +1468,22 @@ function renderExcelPanel() {
             : ""
         }
 
-        ${
-          !isComp
-            ? `<button class="excel-action-btn excel-action-btn-primary" data-act="assign" title="Bu talebi koltuk planına ata">
-                 <i class="ph ph-check-circle"></i>
-                 <span>${selectedSeats.size > 0 ? `Seçiliyi Ata (${selectedSeats.size})` : `Koltuk Ata (${r.requested_count - r.assigned_count})`}</span>
-               </button>`
-            : ""
-        }
-
-        ${
-          r.matched_seats && r.matched_seats.length > 0
-            ? `<button class="excel-action-btn" data-act="highlight" title="Atanan koltukları göster">
-                 <i class="ph ph-eye"></i>
-                 <span>Koltuklar (${r.matched_seats.length})</span>
-               </button>
-               <button class="excel-action-btn excel-action-btn-whatsapp" data-act="whatsapp" title="Bu personele WhatsApp ile bilet gönder">
-                 <i class="ph-bold ph-whatsapp-logo"></i>
-                 <span>WhatsApp</span>
-               </button>
-               <button class="excel-action-btn excel-action-btn-danger" data-act="unassign-req" title="Bu talebe atanmış koltukları boşa çıkar">
-                 <i class="ph ph-x-circle"></i>
-                 <span>Atamayı Kaldır</span>
-               </button>`
-            : ""
-        }
-
         <button class="excel-action-btn" data-act="edit-portal" title="Bu talebi düzenle">
-          <i class="ph ph-pencil-simple"></i>
+          <i class="ph-bold ph-pencil-simple"></i>
           <span>Düzenle</span>
         </button>
+
+        <button class="excel-action-btn" data-act="tracking" title="Yeni takip bağlantısı oluştur">
+          <i class="ph-bold ph-link"></i>
+          <span>Takip</span>
+        </button>
+
+        ${isComp ? `<button class="excel-action-btn" data-act="mark-sent" title="Gönderim durumunu işaretle/kaldır"><i class="ph-bold ph-paper-plane-tilt"></i> <span>${r.whatsapp_sent ? "Geri Al" : "İşaretle"}</span></button>` : ""}
+
         ${
           isPortal
             ? `<button class="excel-action-btn excel-action-btn-danger" data-act="delete-portal" title="Bu talebi sil">
-                 <i class="ph ph-trash"></i>
+                 <i class="ph-bold ph-trash"></i>
                  <span>Sil</span>
                </button>`
             : ""
