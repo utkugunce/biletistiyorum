@@ -18,10 +18,46 @@ function normalizePersonName(str) {
     .trim();
 }
 
+function normalizePhoneCompare(phone) {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.length === 10 && digits.startsWith("5")) return "90" + digits;
+  if (digits.length === 11 && digits.startsWith("0")) return "90" + digits.slice(1);
+  return digits;
+}
+
 function getLocalPhoneCache() {
   try {
     const raw = localStorage.getItem("zeren_portal_phone_cache");
-    return raw ? JSON.parse(raw) : {};
+    const parsed = raw ? JSON.parse(raw) : {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+
+    // Aynı numara birden fazla farklı kişi adına yazılmışsa zehirli önbelleği temizle
+    const phoneOwners = new Map();
+    const clean = {};
+    for (const [k, v] of Object.entries(parsed)) {
+      const nk = normalizePersonName(k);
+      const val = String(v || "").trim();
+      const pk = normalizePhoneCompare(val);
+      if (!nk || pk.length < 10) continue;
+      clean[nk] = val;
+      if (!phoneOwners.has(pk)) phoneOwners.set(pk, new Set());
+      phoneOwners.get(pk).add(nk);
+    }
+
+    let changed = Object.keys(clean).length !== Object.keys(parsed).length;
+    for (const [nk, val] of Object.entries(clean)) {
+      const pk = normalizePhoneCompare(val);
+      if ((phoneOwners.get(pk)?.size || 0) > 1) {
+        delete clean[nk];
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      localStorage.setItem("zeren_portal_phone_cache", JSON.stringify(clean));
+    }
+    return clean;
   } catch (e) {
     return {};
   }
@@ -29,11 +65,62 @@ function getLocalPhoneCache() {
 
 function saveLocalPhoneCache(name, phone) {
   if (!name || !phone) return;
+  const normName = normalizePersonName(name);
+  const phoneKey = normalizePhoneCompare(phone);
+  if (!normName || phoneKey.length < 10) return;
   try {
     const cache = getLocalPhoneCache();
-    cache[normalizePersonName(name)] = String(phone).trim();
+    const ownedByOther = Object.entries(cache).some(
+      ([k, v]) => k !== normName && normalizePhoneCompare(v) === phoneKey
+    );
+    if (ownedByOther) return;
+    cache[normName] = String(phone).trim();
     localStorage.setItem("zeren_portal_phone_cache", JSON.stringify(cache));
   } catch (e) {}
+}
+
+function resolveDisplayNameFromNorm(normName) {
+  for (const g of currentStaffGroups || []) {
+    for (const member of g.members || []) {
+      if (normalizePersonName(member) === normName) return member;
+    }
+  }
+  const fallback = currentStaffGroups && currentStaffGroups.length ? currentStaffGroups : FALLBACK_STAFF_GROUPS;
+  for (const g of fallback || []) {
+    for (const member of g.members || []) {
+      if (normalizePersonName(member) === normName) return member;
+    }
+  }
+  return normName;
+}
+
+function findCachedPersonByPhone(phone, excludePerson = "") {
+  const phoneKey = normalizePhoneCompare(phone);
+  if (phoneKey.length < 10) return "";
+  const excludeNorm = normalizePersonName(excludePerson);
+  const cache = getLocalPhoneCache();
+  for (const [k, v] of Object.entries(cache)) {
+    if (k !== excludeNorm && normalizePhoneCompare(v) === phoneKey) {
+      return resolveDisplayNameFromNorm(k);
+    }
+  }
+  return "";
+}
+
+function updatePhoneConflictWarning() {
+  const phoneInput = document.getElementById("inputPhoneNumber");
+  const personInput = document.getElementById("inputPersonName");
+  const conflictEl = document.getElementById("phoneConflictHint");
+  if (!conflictEl || !phoneInput) return;
+
+  const owner = findCachedPersonByPhone(phoneInput.value, personInput ? personInput.value : "");
+  if (owner) {
+    conflictEl.style.display = "inline-flex";
+    conflictEl.innerHTML = `<i class="ph-bold ph-warning" style="font-size:14px;"></i> <span>Bu numara bu cihazda <strong>${escapeHtml(owner)}</strong> için kayıtlı. Başkası adına talep giriyorsanız lütfen o kişinin numarasını yazınız.</span>`;
+  } else {
+    conflictEl.style.display = "none";
+    conflictEl.innerHTML = "";
+  }
 }
 
 function lookupPhoneForPerson(personName) {
@@ -41,29 +128,9 @@ function lookupPhoneForPerson(personName) {
   const targetNorm = normalizePersonName(personName);
   if (!targetNorm) return "";
 
-  // 1. Cihazdaki yerel önbellek (Bu cihazda daha önce girilen numara)
+  // Cihazdaki yerel önbellek (yalnızca tam eşleşen kişi adı için; ortak zeren_portal_phone kullanılmaz)
   const localCache = getLocalPhoneCache();
-  if (localCache[targetNorm]) {
-    return localCache[targetNorm];
-  }
-
-  // 2. Hatırlanan son kullanıcı ise
-  const lastUser = localStorage.getItem("zeren_portal_last_user");
-  const lastPhone = localStorage.getItem("zeren_portal_phone");
-  if (lastUser && lastPhone && normalizePersonName(lastUser) === targetNorm) {
-    return lastPhone;
-  }
-
-  // 3. Kısmi eşleşme (kullanıcının kendi yerel cihazında)
-  if (targetNorm.length >= 3) {
-    for (const [k, v] of Object.entries(localCache)) {
-      if ((k.startsWith(targetNorm) || targetNorm.startsWith(k)) && v) {
-        return String(v).trim();
-      }
-    }
-  }
-
-  return "";
+  return localCache[targetNorm] || "";
 }
 
 function autoFillPhoneForPerson(personName, force = false) {
@@ -71,22 +138,34 @@ function autoFillPhoneForPerson(personName, force = false) {
   const hintEl = document.getElementById("phoneAutoFillHint");
   if (!phoneInput) return;
 
-  const foundPhone = lookupPhoneForPerson(personName);
+  const targetNorm = normalizePersonName(personName);
+  const currentOwnerNorm = phoneInput.dataset.forPerson || "";
+  const switchedPerson = Boolean(currentOwnerNorm && currentOwnerNorm !== targetNorm);
+  const foundPhone = targetNorm ? lookupPhoneForPerson(personName) : "";
+
   if (foundPhone) {
-    if (force || !phoneInput.value.trim() || !phoneInput.dataset.userEdited) {
+    if (force || switchedPerson || !phoneInput.value.trim() || !phoneInput.dataset.userEdited) {
       phoneInput.value = foundPhone;
       phoneInput.dataset.userEdited = "";
+      phoneInput.dataset.forPerson = targetNorm;
       phoneInput.setCustomValidity("");
       if (hintEl) {
         hintEl.style.display = "inline-flex";
-        hintEl.innerHTML = `<i class="ph-bold ph-check-circle" style="font-size:14px;"></i> <span>Rehberden otomatik dolduruldu: <strong>${escapeHtml(foundPhone)}</strong></span>`;
+        hintEl.innerHTML = `<i class="ph-bold ph-check-circle" style="font-size:14px;"></i> <span>Bu cihazdaki kayıtlı numara dolduruldu: <strong>${escapeHtml(foundPhone)}</strong></span>`;
       }
     }
   } else {
     if (hintEl) {
       hintEl.style.display = "none";
     }
+    if (force || switchedPerson || !phoneInput.dataset.userEdited) {
+      phoneInput.value = "";
+      phoneInput.dataset.userEdited = "";
+      phoneInput.dataset.forPerson = force ? targetNorm : "";
+      phoneInput.setCustomValidity("");
+    }
   }
+  updatePhoneConflictWarning();
 }
 
 function initApp() {
@@ -96,7 +175,13 @@ function initApp() {
   loadInitialData();
   setupMyRequestsTracking();
   document.getElementById("inputPersonName")?.addEventListener("change", event => {
-    autoFillPhoneForPerson(event.target.value.trim(), false);
+    const val = event.target.value.trim();
+    autoFillPhoneForPerson(val, false);
+    const phoneInput = document.getElementById("inputPhoneNumber");
+    if (phoneInput && phoneInput.value.trim() && phoneInput.dataset.userEdited === "true" && !phoneInput.dataset.forPerson) {
+      phoneInput.dataset.forPerson = normalizePersonName(val);
+    }
+    updatePhoneConflictWarning();
   });
   setupPWA();
   const access = new URLSearchParams(location.hash.slice(1)).get("talep");
@@ -183,18 +268,13 @@ async function loadInitialData() {
       renderStaffAccordion(null);
     }
 
-    // Hatırlanan personel varsa doldur
+    // Eskiden kalma eşleşmemiş zeren_portal_phone anahtarını temizle
+    try { localStorage.removeItem("zeren_portal_phone"); } catch (e) {}
+
+    // Hatırlanan personel varsa doldur (telefon yalnız eşleşen kişi için önbellekten yüklenir)
     const remembered = localStorage.getItem("zeren_portal_last_user");
     if (remembered) {
       selectStaffMember(remembered);
-      autoFillPhoneForPerson(remembered, false);
-    }
-    const rememberedPhone = localStorage.getItem("zeren_portal_phone");
-    if (rememberedPhone) {
-      const phoneInput = document.getElementById("inputPhoneNumber");
-      if (phoneInput && !phoneInput.value) {
-        phoneInput.value = rememberedPhone;
-      }
     }
   } catch (err) {
     showPortalToast("Veriler yüklenirken hata oluştu: " + err.message);
@@ -529,11 +609,16 @@ function clearStaffSelection() {
     inputName.focus();
   }
   const phoneInput = document.getElementById("inputPhoneNumber");
-  if (phoneInput && !phoneInput.dataset.userEdited) {
+  if (phoneInput) {
     phoneInput.value = "";
+    phoneInput.dataset.userEdited = "";
+    phoneInput.dataset.forPerson = "";
+    phoneInput.setCustomValidity("");
   }
   const hintEl = document.getElementById("phoneAutoFillHint");
   if (hintEl) hintEl.style.display = "none";
+  const conflictEl = document.getElementById("phoneConflictHint");
+  if (conflictEl) conflictEl.style.display = "none";
   document.querySelectorAll(".staff-member-btn").forEach((btn) => btn.classList.remove("active"));
   const badge = document.getElementById("selectedPersonBadge");
   if (badge) badge.classList.add("hidden");
@@ -541,6 +626,7 @@ function clearStaffSelection() {
   if (staffSelect) staffSelect.value = "";
   try {
     localStorage.removeItem("zeren_portal_last_user");
+    localStorage.removeItem("zeren_portal_phone");
   } catch (e) {}
 }
 
@@ -694,17 +780,17 @@ function setupForm() {
     phoneInput.required = true;
     phoneInput.addEventListener("input", () => {
       phoneInput.dataset.userEdited = "true";
+      const currentName = document.getElementById("inputPersonName")?.value.trim() || "";
+      phoneInput.dataset.forPerson = normalizePersonName(currentName);
       phoneInput.setCustomValidity("");
       const hintEl = document.getElementById("phoneAutoFillHint");
       if (hintEl) hintEl.style.display = "none";
-      const currentName = document.getElementById("inputPersonName")?.value.trim();
-      if (currentName && phoneInput.value.replace(/\D/g, "").length >= 10) {
-        saveLocalPhoneCache(currentName, phoneInput.value.trim());
-      }
+      updatePhoneConflictWarning();
     });
     phoneInput.addEventListener("blur", () => {
       const digits = phoneInput.value.replace(/\D/g, "");
       phoneInput.setCustomValidity(digits.length >= 10 && digits.length <= 15 ? "" : "Geçerli WhatsApp numarası giriniz.");
+      updatePhoneConflictWarning();
     });
   }
 
@@ -765,10 +851,10 @@ function setupForm() {
       sessionStorage.removeItem("zeren_pending_request");
       if (created.tracking_token) localStorage.setItem("zeren_tracking_" + created.id, created.tracking_token);
 
-      // İsmi ve telefonu yerel hafızaya kaydet
+      // İsmi ve telefonu kişi bazlı yerel önbelleğe kaydet
       localStorage.setItem("zeren_portal_last_user", person);
+      localStorage.removeItem("zeren_portal_phone");
       if (phone) {
-        localStorage.setItem("zeren_portal_phone", phone);
         saveLocalPhoneCache(person, phone);
       }
 
@@ -834,6 +920,24 @@ function showSuccessModal(req) {
 }
 
 function resetForm() {
+  const inputName = document.getElementById("inputPersonName");
+  if (inputName) inputName.value = "";
+  const phoneInput = document.getElementById("inputPhoneNumber");
+  if (phoneInput) {
+    phoneInput.value = "";
+    phoneInput.dataset.userEdited = "";
+    phoneInput.dataset.forPerson = "";
+    phoneInput.setCustomValidity("");
+  }
+  const hintEl = document.getElementById("phoneAutoFillHint");
+  if (hintEl) hintEl.style.display = "none";
+  const conflictEl = document.getElementById("phoneConflictHint");
+  if (conflictEl) conflictEl.style.display = "none";
+  document.querySelectorAll(".staff-member-btn").forEach((btn) => btn.classList.remove("active"));
+  const badge = document.getElementById("selectedPersonBadge");
+  if (badge) badge.classList.add("hidden");
+  const staffSelect = document.getElementById("selectStaffDropdown");
+  if (staffSelect) staffSelect.value = "";
   const desc = document.getElementById("inputDescription");
   if (desc) desc.value = "";
   const count = document.getElementById("inputTicketCount");

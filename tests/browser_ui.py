@@ -44,7 +44,7 @@ def api(route):
         data = {'ok': True, 'success': True}
     elif path == 'dispatch/list': data = {'recipients': [], 'pending_count': 0}
     elif path == 'portal/matches': data = [{**m, 'blocks': ['102','121','SAHA']} for m in state['matches']]
-    elif path == 'portal/staff': data = {'groups': [{'group': 'Test', 'members': ['Test Person']}]}
+    elif path == 'portal/staff': data = {'groups': [{'group': 'Test', 'members': ['Test Person', 'Other Person']}]}
     elif path == 'portal/request' and request.method == 'POST':
         submissions.append({'payload': request.post_data_json, 'key': request.headers.get('idempotency-key')})
         data = {**request.post_data_json, 'id': access.split('.')[0], 'tracking_token': access}
@@ -115,12 +115,12 @@ try:
         page.set_viewport_size({'width': 1440, 'height': 1000})
         mark = page.locator('[data-act="mark-sent"]')
         assert mark.is_visible()
-        assert mark.inner_text() == 'Gönderildi olarak işaretle'
+        assert mark.inner_text() == 'İşaretle'
         mark.click()
         page.locator('#tabBtnSent').click()
         undo = page.locator('[data-act="mark-sent"]')
         assert undo.is_visible()
-        assert undo.inner_text() == 'Gönderim işaretini kaldır'
+        assert undo.inner_text() == 'Geri Al'
         undo.click()
         page.locator('#tabBtnExcel').click()
         assert mark.is_visible()
@@ -160,6 +160,24 @@ try:
         assert not page.evaluate('Boolean(window.untrustedExecuted)')
         assert page.locator('#groupsSummaryList img').count() == 0
         print('PASS empty distribution search and untrusted labels rendered as text')
+        page.locator('#tabBtnExcel').click()
+        page.evaluate("""() => {
+          excelData = {
+            ok: true,
+            total_requested: 12,
+            total_assigned: 0,
+            total_pending: 12,
+            requests: [
+              { request_id: 'REQ-C', person: 'Çağlar Oskay', source: 'portal', phone: '05424339057', directory_phone: '+90 532 548 99 11', phone_owner: 'Aysu Balcı', department: '', requested_count: 6, assigned_count: 0, target_block: '121', matched_keys: [], matched_seats: [], fulfillment_status: 'pending', status_color: '#1d4ed8', status_badge: 'Atama bekliyor', progress_pct: 0, whatsapp_sent: false },
+              { request_id: 'REQ-A2', person: 'Aysu Balcı', source: 'portal', phone: '05424339057', directory_phone: '+90 542 433 90 57', phone_owner: '', department: '', requested_count: 6, assigned_count: 0, target_block: '102', matched_keys: [], matched_seats: [], fulfillment_status: 'pending', status_color: '#1d4ed8', status_badge: 'Atama bekliyor', progress_pct: 0, whatsapp_sent: false }
+            ]
+          };
+          renderExcelPanel();
+        }""")
+        assert page.locator('.excel-phone-warning').count() == 2
+        assert page.locator('[data-act="apply-dir-phone"]').count() == 1
+        assert '+90 532 548 99 11' in page.locator('[data-act="apply-dir-phone"]').inner_text()
+        print('PASS admin card flags duplicate/mismatched phones and offers directory phone repair')
         page.set_viewport_size({'width': 390, 'height': 844})
 
         page.goto(base + '/', wait_until='networkidle')
@@ -184,7 +202,26 @@ try:
         page.wait_for_timeout(100)
         assert not page.locator('#modalRequestSuccess').is_visible()
         assert page.locator('#inputTrackQuery').input_value() == access
-        print('PASS portal hidden controls, 30 tickets, idempotent submission and secure tracking')
+        # Phone isolation: switching staff member never retains prior person's phone and purges poisoned duplicate cache
+        page.locator('.nav-tab-btn[data-tab="tab-request"]').click()
+        assert page.locator('#inputPersonName').input_value() == ''
+        assert page.locator('#inputPhoneNumber').input_value() == ''
+        page.locator('details.staff-directory').evaluate("el => el.open = true")
+        page.locator('.staff-group-header').first.click()
+        page.locator('.staff-member-btn[data-name="Test Person"]').click()
+        page.locator('#inputPhoneNumber').fill('05424339057')
+        page.locator('.staff-member-btn[data-name="Other Person"]').click()
+        assert page.locator('#inputPhoneNumber').input_value() == ''
+        page.evaluate("""() => {
+          localStorage.setItem('zeren_portal_phone_cache', JSON.stringify({
+            'test person': '05424339057',
+            'other person': '05424339057'
+          }));
+        }""")
+        page.locator('.staff-member-btn[data-name="Other Person"]').click()
+        assert page.locator('#inputPhoneNumber').input_value() == ''
+        assert page.evaluate("() => localStorage.getItem('zeren_portal_phone_cache')") == '{}'
+        print('PASS portal hidden controls, 30 tickets, idempotent submission, phone isolation, and secure tracking')
         assert not errors, errors
         context.route('**/api/auth/check', lambda route: route.abort())
         page.goto(base + '/admin.html', wait_until='networkidle')

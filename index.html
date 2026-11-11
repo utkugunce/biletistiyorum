@@ -272,10 +272,12 @@
                   <i class="ph-bold ph-whatsapp-logo" style="color: #22c55e;"></i>
                   <input
                     type="tel"
-                    id="inputPhoneNumber" required autocomplete="tel" inputmode="tel"
+                    id="inputPhoneNumber" required autocomplete="off" inputmode="tel"
+                    name="ticket_whatsapp_phone"
                     class="form-ctrl"
                     placeholder="05xx xxx xx xx"
                   />
+                  <div id="phoneConflictHint" style="display:none; font-size:12px; color:#b45309; font-weight:600; margin-top:5px; align-items:center; gap:5px;"></div>
                 </div>
                 <div id="phoneAutoFillHint" style="display:none; font-size:12px; color:#15803d; font-weight:600; margin-top:5px; align-items:center; gap:5px;">
                   <i class="ph-bold ph-check-circle" style="font-size:14px;"></i>

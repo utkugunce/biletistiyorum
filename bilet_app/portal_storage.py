@@ -11,6 +11,7 @@ import sys
 from cloud_bridge import call as cloud_call, match_id_for
 import os
 import re
+import unicodedata
 import urllib.parse
 import urllib.request
 from datetime import datetime
@@ -68,9 +69,11 @@ def save_phonebook(pb: Dict[str, str]) -> None:
         pass
 
 def _normalize_name_key(text: str) -> str:
-    t = text.lower().strip()
-    tr_map = str.maketrans("çğıöşüiı", "cgiosuii")
-    return t.translate(tr_map)
+    raw = str(text or "").strip().replace("İ", "i").replace("I", "ı")
+    raw = raw.translate(str.maketrans("çğıöşüıÇĞÖŞÜ", "cgiosuicgosu"))
+    raw = unicodedata.normalize("NFKD", raw)
+    raw = "".join(ch for ch in raw if not unicodedata.combining(ch))
+    return " ".join(raw.lower().split())
 
 
 def get_person_phone(person_name: str) -> str:
@@ -78,30 +81,59 @@ def get_person_phone(person_name: str) -> str:
         return ""
     pb = load_phonebook()
     p_norm = _normalize_name_key(person_name)
+    if not p_norm:
+        return ""
 
     # 1. Tam eşleşme
     for k, v in pb.items():
-        if _normalize_name_key(k) == p_norm:
-            return v
+        if _normalize_name_key(k) == p_norm and str(v or "").strip():
+            return str(v).strip()
 
     # 2. Özel kısaltma eşleşmeleri
     if p_norm in ("asc", "ahmet salih"):
         if "Ahmet Salih Canbaz" in pb:
             return pb["Ahmet Salih Canbaz"]
 
-    # 3. İsim/alt dize eşleşmesi (örn: "seda" -> "Seda Canlı", "eşref" -> "Eşref Arıcan")
-    for k, v in pb.items():
-        k_norm = _normalize_name_key(k)
-        if len(p_norm) >= 3 and (p_norm in k_norm or k_norm in p_norm):
-            return v
+    # 3. Belirsiz olmayan isim/alt dize eşleşmesi (yalnız tek numaraya iniyorsa döner)
+    if len(p_norm) >= 3:
+        matches = [
+            (k, str(v).strip())
+            for k, v in pb.items()
+            if str(v or "").strip() and (p_norm in _normalize_name_key(k) or _normalize_name_key(k) in p_norm)
+        ]
+        if matches:
+            unique_numbers = {format_whatsapp_phone(v) or v for _, v in matches}
+            if len(unique_numbers) == 1:
+                return matches[0][1]
 
     return ""
+
+
+def find_phone_owner(phone: str, exclude_person: str = "") -> str:
+    clean = format_whatsapp_phone(phone)
+    if not clean:
+        return ""
+    pb = load_phonebook()
+    exclude_norm = _normalize_name_key(exclude_person)
+    owners = []
+    seen_norms = set()
+    for k, v in pb.items():
+        k_norm = _normalize_name_key(k)
+        if not k_norm or k_norm == exclude_norm:
+            continue
+        if format_whatsapp_phone(str(v or "")) == clean and k_norm not in seen_norms:
+            seen_norms.add(k_norm)
+            owners.append(k)
+    return ", ".join(owners)
+
 
 def save_person_phone(person_name: str, phone: str) -> None:
     if not person_name or not phone:
         return
     pb = load_phonebook()
-    pb[person_name.strip()] = phone.strip()
+    target_norm = _normalize_name_key(person_name)
+    existing_key = next((k for k in pb if _normalize_name_key(k) == target_norm), None)
+    pb[existing_key or person_name.strip()] = phone.strip()
     save_phonebook(pb)
 
 def format_whatsapp_phone(raw_phone: str) -> str:
@@ -252,7 +284,9 @@ def create_portal_request(payload: Dict[str, Any], idempotency_key=None) -> Dict
 
     phone = payload.get("phone", "").strip()
     if phone:
-        save_person_phone(person, phone)
+        # Mevcut bir kişinin kayıtlı rehber numarasını veya başka birine ait numarayı portaldan üzerine yazma
+        if not get_person_phone(person) and not find_phone_owner(phone, exclude_person=person):
+            save_person_phone(person, phone)
     else:
         phone = get_person_phone(person)
 

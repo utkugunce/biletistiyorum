@@ -283,6 +283,18 @@ test('directory matching never picks an arbitrary phone for an ambiguous short n
  assert.equal(adminHelpers.lookupPhone('Test',{'Test One':'05320000001','Test Two':'05320000002'}),'');
  assert.equal(adminHelpers.lookupPhone('Test One',{'Test One':'05320000001','Test Two':'05320000002'}),'05320000001');
 });
+test('summary reports directory phone and conflicting owner when another member phone was submitted',async()=>{
+ reset();rows[0].person='Çağlar Oskay';rows[0].phone='05424339057';
+ rows[1].person='Aysu Balcı';rows[1].phone='05424339057';
+ const helpers={...adminHelpers,getBaseData:()=>({...adminHelpers.getBaseData(),phonebook:{'Aysu Balcı':'+90 542 433 90 57','Çağlar Oskay':'+90 532 548 99 11'}})};
+ const res=response();await runAdmin(req('/api/excel/summary',{},'GET'),res,await loadSystemState(),helpers);
+ const caglar=res.body.requests.find(r=>r.request_id==='REQ-A');
+ const aysu=res.body.requests.find(r=>r.request_id==='REQ-B');
+ assert.equal(caglar.phone,'05424339057');
+ assert.equal(caglar.directory_phone,'+90 532 548 99 11');
+ assert.equal(caglar.phone_owner,'Aysu Balcı');
+ assert.equal(aysu.phone_owner,'');
+});
 
 test('dispatch retains the count and seat labels required by its existing UI',async()=>{
  reset();await run(admin,assign('REQ-A',1));

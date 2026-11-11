@@ -38,6 +38,7 @@ from excel_reader import (
 from portal_storage import (
     CLUB_STAFF_PRESETS,
     create_portal_request,
+    find_phone_owner,
     format_whatsapp_phone,
     get_person_phone,
     get_requests_by_person,
@@ -1350,8 +1351,10 @@ def api_dispatch_list():
         person = pr.get("person", "").strip()
         seen_persons.add(person.lower())
         block = pr.get("assigned_block", "121")
-        phone = pr.get("phone", "").strip() or get_person_phone(person)
+        dir_phone = get_person_phone(person)
+        phone = pr.get("phone", "").strip() or dir_phone
         clean_phone = format_whatsapp_phone(phone)
+        phone_owner = find_phone_owner(phone, exclude_person=person)
         pdf_c = sum(1 for s in seats if f"{block}:{s}" in pmap)
         has_pdf = pdf_c >= len(seats) and len(seats) > 0
 
@@ -1386,6 +1389,8 @@ def api_dispatch_list():
             "person": person,
             "department": pr.get("department", ""),
             "phone": phone,
+            "directory_phone": dir_phone,
+            "phone_owner": phone_owner,
             "clean_phone": clean_phone,
             "block": block,
             "seats": seats,
@@ -1416,8 +1421,10 @@ def api_dispatch_list():
         seen_persons.add(g_name.lower())
         b_id = t_list[0]["block"]
         seats = [f"{t['row']}-{t['seat']}" for t in t_list]
-        phone = get_person_phone(g_name)
+        dir_phone = get_person_phone(g_name)
+        phone = dir_phone
         clean_phone = format_whatsapp_phone(phone)
+        phone_owner = find_phone_owner(phone, exclude_person=g_name)
         pdf_c = sum(1 for t in t_list if t.get("has_pdf", True))
         has_pdf = pdf_c >= len(t_list)
         wa_web = f"https://web.whatsapp.com/send?phone={clean_phone}" if clean_phone else "https://web.whatsapp.com"
@@ -1451,6 +1458,8 @@ def api_dispatch_list():
             "person": g_name,
             "department": t_list[0].get("subgroup", ""),
             "phone": phone,
+            "directory_phone": dir_phone,
+            "phone_owner": phone_owner,
             "clean_phone": clean_phone,
             "block": b_id,
             "seats": seats,
@@ -1682,7 +1691,9 @@ def api_excel_summary(match_name: Optional[str] = None):
         is_comp = asg_c >= req_c and req_c > 0
         is_part = asg_c > 0 and not is_comp
         pr_person = pr.get("person", "")
-        pr_phone = pr.get("phone", "").strip() or get_person_phone(pr_person)
+        dir_phone = get_person_phone(pr_person)
+        pr_phone = pr.get("phone", "").strip() or dir_phone
+        pr_phone_owner = find_phone_owner(pr_phone, exclude_person=pr_person)
         portal_evaluated.append({
             "request_id": pr["id"],
             "source": "portal",
@@ -1692,6 +1703,8 @@ def api_excel_summary(match_name: Optional[str] = None):
             "person": pr_person,
             "department": pr.get("department", ""),
             "phone": pr_phone,
+            "directory_phone": dir_phone,
+            "phone_owner": pr_phone_owner,
             "ticket_type": pr.get("ticket_type", "Davetiye / Protokol"),
             "requested_count": req_c,
             "description": f"🌐 Bilet İstiyorum ({pr.get('department', '')}): {pr.get('description', '')}".strip(": "),

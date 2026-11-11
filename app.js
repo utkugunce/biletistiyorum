@@ -1245,6 +1245,101 @@ function switchSidebarTab(tabName) {
 
 const reloadExcelSummary = fetchExcelSummary;
 window.reloadExcelSummary = fetchExcelSummary;
+function normalizePhoneKey(raw) {
+  const digits = String(raw || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.length === 10 && digits.startsWith("5")) return "90" + digits;
+  if (digits.length === 11 && digits.startsWith("0")) return "90" + digits.slice(1);
+  return digits;
+}
+
+function normalizePersonKeyClient(name) {
+  return String(name || "")
+    .toLocaleLowerCase("tr")
+    .replace(/ı/g, "i")
+    .replace(/ğ/g, "g")
+    .replace(/ü/g, "u")
+    .replace(/ş/g, "s")
+    .replace(/ö/g, "o")
+    .replace(/ç/g, "c")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getPhoneConflictInfo(r, allItems) {
+  const pKey = normalizePhoneKey(r && r.phone);
+  const myPersonKey = normalizePersonKeyClient(r && r.person);
+  const otherPeople = [];
+  if (pKey) {
+    const seen = new Set();
+    (allItems || []).forEach((item) => {
+      if (normalizePhoneKey(item.phone) === pKey) {
+        const k = normalizePersonKeyClient(item.person);
+        if (k && k !== myPersonKey && !seen.has(k)) {
+          seen.add(k);
+          otherPeople.push(item.person);
+        }
+      }
+    });
+  }
+  const ownerFromDir = String((r && r.phone_owner) || "").trim();
+  const dirKey = normalizePhoneKey(r && r.directory_phone);
+  const hasDirMismatch = Boolean(dirKey && pKey !== dirKey);
+  const isConflict = Boolean(otherPeople.length > 0 || ownerFromDir);
+  return { isConflict, otherPeople, ownerFromDir, hasDirMismatch };
+}
+
+async function applyDirectoryPhoneForRequest(reqId, person, dirPhone, requestedCount) {
+  if (!dirPhone) return false;
+  try {
+    let ok = false;
+    let errMsg = "Telefon güncellenemedi.";
+    if (reqId && !String(reqId).startsWith("group_")) {
+      const payload = { person, phone: dirPhone };
+      if (requestedCount) payload.requested_count = requestedCount;
+      const res = await fetch(`/api/portal/request/${encodeURIComponent(reqId)}/update`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && (data.ok || data.success)) {
+        ok = true;
+      } else if (res.status !== 404) {
+        errMsg = data.detail || data.error || errMsg;
+      }
+    }
+    if (!ok) {
+      const res = await fetch("/api/dispatch/save-phone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ request_id: reqId, person, phone: dirPhone }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        ok = true;
+      } else {
+        errMsg = data.detail || data.error || errMsg;
+      }
+    }
+    if (!ok) throw new Error(errMsg);
+    showToast(`📞 ${person} için rehber numarası uygulandı: ${dirPhone}`);
+    const foundDispatch = dispatchRecipients.find((x) => x.id === reqId || x.request_id === reqId);
+    if (foundDispatch) {
+      foundDispatch.phone = dirPhone;
+      foundDispatch.clean_phone = normalizePhoneKey(dirPhone);
+      foundDispatch.phone_owner = "";
+      renderDispatchRecipients();
+    }
+    await fetchExcelSummary();
+    await fetchState(false);
+    return true;
+  } catch (err) {
+    showToast("❌ " + err.message);
+    return false;
+  }
+}
+
 async function fetchExcelSummary(matchName = null) {
   try {
     const url = matchName
@@ -1399,6 +1494,7 @@ function formatShortRequestId(id) {
     const shortId = formatShortRequestId(r.request_id);
     const fullId = r.request_id || "ZS-000";
     const pendingSeats = Math.max(0, r.requested_count - r.assigned_count);
+    const phoneConflict = getPhoneConflictInfo(r, allReqs);
 
     card.innerHTML = `
       <div class="excel-card-header">
@@ -1412,8 +1508,27 @@ function formatShortRequestId(id) {
       <div class="excel-card-subline">
         <span class="req-id-badge" title="${escapeHtml(fullId)} (Kopyalamak için tıklayın)" onclick="navigator.clipboard.writeText('${escapeHtml(fullId)}'); if(window.showToast) window.showToast('Talep no kopyalandı.');">${escapeHtml(shortId)}</span>
         ${r.department ? `<span class="excel-card-dept">${escapeHtml(r.department)}</span>` : ""}
-        ${r.phone ? `<a href="tel:${escapeHtml(r.phone)}" class="excel-card-phone" title="Telefonu Ara"><i class="ph-bold ph-phone"></i> ${escapeHtml(r.phone)}</a>` : ""}
+        ${r.phone ? `<a href="tel:${escapeHtml(r.phone)}" class="excel-card-phone${phoneConflict.isConflict ? " excel-card-phone-warn" : ""}" title="${phoneConflict.isConflict ? "Dikkat: Aynı numara çakışması" : "Telefonu Ara"}"><i class="ph-bold ph-phone"></i> ${escapeHtml(r.phone)}</a>` : ""}
       </div>
+
+      ${phoneConflict.isConflict ? `
+        <div class="excel-phone-warning">
+          <div class="excel-phone-warning-text">
+            <i class="ph-bold ph-warning"></i>
+            <span>${
+              phoneConflict.ownerFromDir
+                ? `Bu numara rehberde <strong>${escapeHtml(phoneConflict.ownerFromDir)}</strong> adına kayıtlı.`
+                : `Aynı numara başka ${phoneConflict.otherPeople.length} kişide daha görünüyor (${escapeHtml(phoneConflict.otherPeople.slice(0, 2).join(", "))}${phoneConflict.otherPeople.length > 2 ? "..." : ""}).`
+            }</span>
+          </div>
+          ${phoneConflict.hasDirMismatch ? `
+            <button type="button" class="excel-fix-phone-btn" data-act="apply-dir-phone" title="${escapeHtml(r.person)} için kayıtlı rehber numarasını uygula">
+              <i class="ph-bold ph-phone-plus"></i>
+              <span>Rehberdekini Uygula (${escapeHtml(r.directory_phone)})</span>
+            </button>
+          ` : ""}
+        </div>
+      ` : ""}
 
       ${r.description ? `<div class="excel-card-notes" title="${escapeHtml(r.description)}"><i class="ph ph-chat-text"></i> ${escapeHtml(r.description)}</div>` : ""}
 
@@ -1492,6 +1607,16 @@ function formatShortRequestId(id) {
     `;
 
     // Buton aksiyonları
+    const btnApplyDirPhone = card.querySelector('[data-act="apply-dir-phone"]');
+    if (btnApplyDirPhone) {
+      btnApplyDirPhone.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        btnApplyDirPhone.disabled = true;
+        await applyDirectoryPhoneForRequest(r.request_id, r.person, r.directory_phone, r.requested_count);
+        btnApplyDirPhone.disabled = false;
+      });
+    }
+
     const btnEditPortal = card.querySelector('[data-act="edit-portal"]');
     if (btnEditPortal) {
       btnEditPortal.addEventListener("click", (e) => {
@@ -2781,6 +2906,7 @@ function renderDispatchRecipients() {
   if (emptyBox) emptyBox.classList.add("hidden");
 
   filtered.forEach((r) => {
+    const phoneConflict = getPhoneConflictInfo(r, dispatchRecipients);
     const card = document.createElement("div");
     card.className = `dispatch-recipient-card ${r.whatsapp_sent ? "card-sent" : ""}`;
 
@@ -2796,13 +2922,28 @@ function renderDispatchRecipients() {
       <div class="d-phone-col">
         <input
           type="tel"
-          class="d-phone-input"
+          class="d-phone-input${phoneConflict.isConflict ? " d-phone-input-warn" : ""}"
           placeholder="05xx xxx xx xx"
           value="${escapeHtml(r.phone || '')}"
           data-id="${escapeHtml(r.id)}"
           data-person="${escapeHtml(r.person)}"
           title="Telefon numarasını yazıp Enter'a veya dışarı tıklayın"
         />
+        ${phoneConflict.isConflict ? `
+          <div class="d-phone-warning">
+            <span><i class="ph-bold ph-warning"></i> ${
+              phoneConflict.ownerFromDir
+                ? `Rehberde ${escapeHtml(phoneConflict.ownerFromDir)} adına kayıtlı`
+                : `Aynı numara başka kişide de var (${escapeHtml(phoneConflict.otherPeople.slice(0, 2).join(", "))})`
+            }</span>
+            ${phoneConflict.hasDirMismatch ? `
+              <button type="button" class="excel-fix-phone-btn" data-action="apply-dir-phone">
+                <i class="ph-bold ph-phone-plus"></i>
+                <span>Rehberdekini Uygula (${escapeHtml(r.directory_phone)})</span>
+              </button>
+            ` : ""}
+          </div>
+        ` : ""}
       </div>
 
       <div class="d-seats-col">
@@ -2853,6 +2994,16 @@ function renderDispatchRecipients() {
         await saveRecipientPhone(r.id, r.person, val);
       });
       phoneInput.addEventListener("click", (e) => e.stopPropagation());
+    }
+
+    const btnApplyDir = card.querySelector('[data-action="apply-dir-phone"]');
+    if (btnApplyDir) {
+      btnApplyDir.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        btnApplyDir.disabled = true;
+        await applyDirectoryPhoneForRequest(r.id, r.person, r.directory_phone, r.requested_count);
+        btnApplyDir.disabled = false;
+      });
     }
 
     // 2. WhatsApp ile Gönder Butonu
@@ -3192,6 +3343,37 @@ function openEditRequestModal(r) {
   document.getElementById("editReqId").value = reqId;
   document.getElementById("editReqPerson").value = r.person || "";
   document.getElementById("editReqPhone").value = r.phone || "";
+  const editPhoneHintEl = document.getElementById("editReqPhoneHint");
+  if (editPhoneHintEl) {
+    const phoneConflict = getPhoneConflictInfo(r, (excelData && excelData.requests) || []);
+    if (phoneConflict.isConflict || phoneConflict.hasDirMismatch) {
+      const msg = phoneConflict.ownerFromDir
+        ? `Bu numara rehberde <strong>${escapeHtml(phoneConflict.ownerFromDir)}</strong> adına kayıtlı.`
+        : phoneConflict.otherPeople.length > 0
+          ? `Aynı numara başka kişilerde de görünüyor: <strong>${escapeHtml(phoneConflict.otherPeople.join(", "))}</strong>.`
+          : `Girilen numara rehberdeki kayıtla farklı görünüyor.`;
+      editPhoneHintEl.innerHTML = `
+        <div><i class="ph-bold ph-warning"></i> ${msg}</div>
+        ${r.directory_phone && normalizePhoneKey(r.directory_phone) !== normalizePhoneKey(r.phone) ? `
+          <button type="button" class="excel-fix-phone-btn" id="btnApplyEditDirPhone">
+            <i class="ph-bold ph-phone-plus"></i>
+            <span>Rehberdeki Numarayı Kullan (${escapeHtml(r.directory_phone)})</span>
+          </button>
+        ` : ""}
+      `;
+      editPhoneHintEl.classList.remove("hidden");
+      const btnUseDir = document.getElementById("btnApplyEditDirPhone");
+      if (btnUseDir) {
+        btnUseDir.onclick = () => {
+          document.getElementById("editReqPhone").value = r.directory_phone;
+          editPhoneHintEl.classList.add("hidden");
+        };
+      }
+    } else {
+      editPhoneHintEl.classList.add("hidden");
+      editPhoneHintEl.innerHTML = "";
+    }
+  }
   document.getElementById("editReqDept").value = r.department || "";
   document.getElementById("editReqCount").value = r.requested_count || 1;
 
